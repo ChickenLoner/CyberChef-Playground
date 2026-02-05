@@ -45,3 +45,8 @@ temp/
 
 # Docker volumes
 .docker/
+
+# challenge 
+challenges/*plaintxt*
+reorganize.sh
+generate_challenges.py

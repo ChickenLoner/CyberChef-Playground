@@ -1,0 +1,10 @@
+{
+  "id": 5,
+  "name": "Final Boss: Multi-Stage",
+  "description": "Ransomware-like encryption chain. Decrypt all stages to win!",
+  "hint": "Multiple operations in sequence. Find all parameters and correct order.",
+  "flag": "CHEF{m4st3r_0f_cyb3rch3f_pl4ygr0und}",
+  "binaryFile": "level5_boss",
+  "encryptedFile": "level5_encrypted.bin",
+  "solutionFile": "level5_solution.json"
+}

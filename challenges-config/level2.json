@@ -1,0 +1,16 @@
+{
+  "id": 2,
+  "name": "Base64 Layering",
+  "description": "Multiple encoding layers. What's hiding beneath?",
+  "hint": "Sometimes data is encoded multiple times. Check how many layers there are.",
+  "flag": "CHEF{b4s364_0n10n_l4y3rs}",
+  "challengeFiles": [
+    {
+      "name": "Challenge Package",
+      "file": "level2_challenge.zip",
+      "description": "Binary and sample encrypted file"
+    }
+  ],
+  "validationFile": "level2_validation.bin",
+  "solutionFile": "level2_solution.json"
+}

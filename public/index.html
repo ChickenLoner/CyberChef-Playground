@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CyberChef Playground CTF</title>
+    <title>CyberChef Playground</title>
     <style>
         * {
             margin: 0;
@@ -373,7 +373,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>🔐 CyberChef Playground CTF</h1>
+            <h1>🔐 CyberChef Playground</h1>
             <p class="subtitle">Reverse. Decrypt. Conquer.</p>
         </header>
         
@@ -403,9 +403,8 @@
             <p class="description" id="challenge-description"></p>
             <div class="hint" id="challenge-hint"></div>
             
-            <div class="downloads">
-                <a href="#" class="btn" id="download-binary">📦 Download Binary</a>
-                <a href="#" class="btn btn-secondary" id="download-encrypted">🔒 Download Encrypted File</a>
+            <div class="downloads" id="downloads-container">
+                <!-- Dynamic file downloads will be inserted here -->
             </div>
         </div>
         
@@ -538,8 +537,30 @@ XOR({'option':'Hex','string':'42'},'Standard',false)"></textarea>
                 document.getElementById('challenge-description').textContent = challenge.description;
                 document.getElementById('challenge-hint').innerHTML = `<strong>💡 Hint:</strong> ${challenge.hint}`;
                 
-                document.getElementById('download-binary').href = challenge.binaryUrl;
-                document.getElementById('download-encrypted').href = challenge.encryptedFileUrl;
+                // Build download buttons dynamically
+                const downloadsContainer = document.getElementById('downloads-container');
+                downloadsContainer.innerHTML = '';
+                
+                challenge.files.forEach((file, index) => {
+                    const link = document.createElement('a');
+                    link.href = file.url;
+                    link.className = index === 0 ? 'btn' : 'btn btn-secondary';
+                    link.download = '';
+                    
+                    // Icon based on file type
+                    let icon = '📦';
+                    if (file.name.toLowerCase().includes('pcap')) icon = '🌐';
+                    else if (file.name.toLowerCase().includes('zip') || file.name.toLowerCase().includes('package')) icon = '📁';
+                    else if (file.name.toLowerCase().includes('binary')) icon = '⚙️';
+                    
+                    link.innerHTML = `${icon} ${file.name}`;
+                    
+                    if (file.description) {
+                        link.title = file.description;
+                    }
+                    
+                    downloadsContainer.appendChild(link);
+                });
                 
                 currentLevel = level;
                 
@@ -630,7 +651,6 @@ XOR({'option':'Hex','string':'42'},'Standard',false)"></textarea>
                     resultDiv.innerHTML = `
                         <h2>✅ ${result.message}</h2>
                         <div class="flag">${result.flag}</div>
-                        <p><strong>Decrypted content:</strong> ${result.decryptedContent}</p>
                         ${result.nextLevel ? 
                             `<button class="btn" onclick="loadChallenge(${result.nextLevel})">
                                 Next Challenge →
@@ -648,10 +668,6 @@ XOR({'option':'Hex','string':'42'},'Standard',false)"></textarea>
                         <h2>❌ ${result.message}</h2>
                         ${result.hint ? `<p><strong>Hint:</strong> ${result.hint}</p>` : ''}
                         ${result.error ? `<p><strong>Error:</strong> ${result.error}</p>` : ''}
-                        ${result.expectedHash ? 
-                            `<p><small>Expected: ${result.expectedHash}<br>Got: ${result.gotHash}</small></p>` : 
-                            ''
-                        }
                     `;
                 }
                 

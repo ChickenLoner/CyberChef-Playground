@@ -14,54 +14,44 @@ app.use(express.json({ limit: '10mb' })); // Increase limit for large recipes
 app.use(express.static('public'));
 app.use('/challenges', express.static('challenges'));
 
-// Challenge configuration
-const CHALLENGES = {
-  1: {
-    name: "XOR Warmup",
-    description: "A simple XOR encryption. Reverse the binary to find the key.",
-    binaryFile: "level1_xor",
-    encryptedFile: "level1_encrypted.bin",
-    expectedHash: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
-    hint: "Look for the XOR operation in the binary. The key is a single byte.",
-    flag: "CYBER{x0r_1s_r3v3rs1bl3}"
-  },
-  2: {
-    name: "Base64 Layering",
-    description: "Multiple encoding layers. What's hiding beneath?",
-    binaryFile: "level2_base64",
-    encryptedFile: "level2_encrypted.bin",
-    expectedHash: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
-    hint: "Sometimes data is encoded multiple times. Check how many layers there are.",
-    flag: "CYBER{b4s364_0n10n_l4y3rs}"
-  },
-  3: {
-    name: "Substitution Mystery",
-    description: "Simple substitution cipher. Can you extract the key?",
-    binaryFile: "level3_aes",
-    encryptedFile: "level3_encrypted.bin",
-    expectedHash: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
-    hint: "Look for ADD or SUB operations. The key is visible in the binary.",
-    flag: "CYBER{subst1tut10n_c1ph3r}"
-  },
-  4: {
-    name: "ROT Combination",
-    description: "Classical cipher with a twist.",
-    binaryFile: "level4_rot",
-    encryptedFile: "level4_encrypted.bin",
-    expectedHash: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
-    hint: "ROT13 isn't the only rotation. Try different amounts.",
-    flag: "CYBER{r0t4t3_4ll_th3_w4y}"
-  },
-  5: {
-    name: "Final Boss: Multi-Stage",
-    description: "Ransomware-like encryption chain. Decrypt all stages to win!",
-    binaryFile: "level5_boss",
-    encryptedFile: "level5_encrypted.bin",
-    expectedHash: "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
-    hint: "Multiple operations in sequence. Find all parameters and correct order.",
-    flag: "CTF{m4st3r_0f_cyb3rch3f_pl4ygr0und}"
+// Load challenges from separate config files
+const challengesCache = new Map();
+
+async function loadChallenge(level) {
+  // Check cache first
+  if (challengesCache.has(level)) {
+    return challengesCache.get(level);
   }
-};
+  
+  try {
+    // Load challenge config
+    const configPath = path.join(__dirname, 'challenges-config', `level${level}.json`);
+    const data = await fs.readFile(configPath, 'utf8');
+    const challenge = JSON.parse(data);
+    
+    // Load solution recipe from separate file
+    const solutionPath = path.join(__dirname, 'solutions', challenge.solutionFile);
+    const solutionData = await fs.readFile(solutionPath, 'utf8');
+    challenge.solutionRecipe = JSON.parse(solutionData);
+    
+    challengesCache.set(level, challenge);
+    return challenge;
+  } catch (error) {
+    console.error(`Failed to load challenge ${level}:`, error.message);
+    return null;
+  }
+}
+
+// Get total number of challenges
+async function getTotalChallenges() {
+  try {
+    const configDir = path.join(__dirname, 'challenges-config');
+    const files = await fs.readdir(configDir);
+    return files.filter(f => f.startsWith('level') && f.endsWith('.json')).length;
+  } catch (error) {
+    return 5; // Default fallback
+  }
+}
 
 // User progress tracking
 const userProgress = new Map();
@@ -179,18 +169,24 @@ app.get('/api/challenge/:level', async (req, res) => {
     return res.status(403).json({ error: 'Level not unlocked yet' });
   }
   
-  const challenge = CHALLENGES[level];
+  const challenge = await loadChallenge(level);
   if (!challenge) {
     return res.status(404).json({ error: 'Challenge not found' });
   }
+  
+  // Build download URLs for all challenge files
+  const files = challenge.challengeFiles.map(f => ({
+    name: f.name,
+    url: `/challenges/${f.file}`,
+    description: f.description || null
+  }));
   
   res.json({
     level,
     name: challenge.name,
     description: challenge.description,
     hint: challenge.hint,
-    binaryUrl: `/challenges/${challenge.binaryFile}`,
-    encryptedFileUrl: `/challenges/${challenge.encryptedFile}`
+    files: files
   });
 });
 
@@ -236,7 +232,7 @@ app.post('/api/validate/:level', async (req, res) => {
     return res.status(403).json({ error: 'Level not unlocked yet' });
   }
   
-  const challenge = CHALLENGES[level];
+  const challenge = await loadChallenge(level);
   if (!challenge) {
     return res.status(404).json({ error: 'Challenge not found' });
   }
@@ -274,51 +270,53 @@ app.post('/api/validate/:level', async (req, res) => {
       });
     }
     
-    // Read encrypted file
-    const encryptedPath = path.join(__dirname, 'challenges', challenge.encryptedFile);
-    const encryptedData = await fs.readFile(encryptedPath);
+    // Read validation file (different from sample/practice file)
+    const validationPath = path.join(__dirname, 'challenges', challenge.validationFile);
+    const validationData = await fs.readFile(validationPath);
     
-    console.log(`Input: ${encryptedData.length} bytes, hex: ${encryptedData.toString('hex')}`);
+    console.log(`Validation file: ${validationData.length} bytes, hex: ${validationData.toString('hex')}`);
     
-    // Execute recipe using CyberChef Node.js API
-    const result = await executeCyberChefRecipe(encryptedData, parsedRecipe);
+    // Execute user's recipe on validation data
+    const userResult = await executeCyberChefRecipe(validationData, parsedRecipe);
     
-    // Calculate hash of result
-    const resultHash = crypto.createHash('sha256')
-      .update(result)
-      .digest('hex');
+    // Execute solution recipe on validation data
+    const expectedResult = await executeCyberChefRecipe(validationData, challenge.solutionRecipe);
     
-    console.log(`Expected hash: ${challenge.expectedHash}`);
-    console.log(`Result hash:   ${resultHash}`);
-    console.log(`Match: ${resultHash === challenge.expectedHash ? '✓ YES' : '✗ NO'}`);
+    // Calculate hashes
+    const userHash = crypto.createHash('sha256').update(userResult).digest('hex');
+    const expectedHash = crypto.createHash('sha256').update(expectedResult).digest('hex');
+    
+    console.log(`User result: ${userResult.length} chars`);
+    console.log(`Expected result: ${expectedResult.length} chars`);
+    console.log(`User hash:     ${userHash}`);
+    console.log(`Expected hash: ${expectedHash}`);
+    console.log(`Match: ${userHash === expectedHash ? '✓ YES' : '✗ NO'}`);
     console.log('='.repeat(50) + '\n');
     
     // Validate hash
-    if (resultHash === challenge.expectedHash) {
+    if (userHash === expectedHash) {
       // Update progress
       if (!progress.completedLevels.includes(level)) {
         progress.completedLevels.push(level);
-        progress.currentLevel = Math.min(level + 1, Object.keys(CHALLENGES).length + 1);
+        const totalChallenges = await getTotalChallenges();
+        progress.currentLevel = Math.min(level + 1, totalChallenges + 1);
       }
       
-      const isLastLevel = level === Object.keys(CHALLENGES).length;
+      const totalChallenges = await getTotalChallenges();
+      const isLastLevel = level === totalChallenges;
       
       return res.json({
         success: true,
         message: 'Correct! Challenge solved!',
         flag: challenge.flag,
         nextLevel: isLastLevel ? null : progress.currentLevel,
-        decryptedContent: result,
         isComplete: isLastLevel
       });
     } else {
       return res.json({
         success: false,
-        message: 'Incorrect decryption. The hash does not match.',
-        expectedHash: challenge.expectedHash,
-        gotHash: resultHash,
-        decryptedContent: result.substring(0, 100),
-        hint: 'Review your recipe operations and parameters.'
+        message: 'Incorrect decryption. The result does not match the expected output.',
+        hint: 'Review your recipe operations and parameters. Try testing in CyberChef first.'
       });
     }
     
@@ -352,7 +350,7 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 console.log('\n' + '='.repeat(60));
-console.log('CyberChef Playground CTF - Node.js API Mode');
+console.log('CyberChef Playground - Node.js API Mode');
 console.log('='.repeat(60));
 console.log('\n✓ Using cyberchef-node v2.0.3 (Node.js compatible)');
 console.log('✓ ALL 300+ operations supported!');
