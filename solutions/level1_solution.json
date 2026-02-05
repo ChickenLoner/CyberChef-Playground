@@ -1,0 +1,13 @@
+[
+  {
+    "op": "XOR",
+    "args": [
+      {
+        "option": "Hex",
+        "string": "42"
+      },
+      "Standard",
+      false
+    ]
+  }
+]

@@ -1,0 +1,11 @@
+[
+  {
+    "op": "SUB",
+    "args": [
+      {
+        "option": "Hex",
+        "string": "89"
+      }
+    ]
+  }
+]

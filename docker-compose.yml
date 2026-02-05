@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ./challenges:/app/challenges:ro
+    restart: unless-stopped
+    
+  redis:
+    image: redis:alpine
+    restart: unless-stopped

@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberChef Playground CTF</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #00ff00;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: rgba(0, 255, 0, 0.1);
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+        }
+        
+        h1 {
+            font-size: 3em;
+            text-shadow: 0 0 10px #00ff00;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #00dd00;
+            font-size: 1.2em;
+        }
+        
+        .challenge-info {
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .level-badge {
+            display: inline-block;
+            background: #00ff00;
+            color: #000;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        
+        h2 {
+            color: #00ff00;
+            margin-bottom: 15px;
+        }
+        
+        .description {
+            margin: 20px 0;
+            line-height: 1.6;
+        }
+        
+        .hint {
+            background: rgba(255, 255, 0, 0.1);
+            border-left: 4px solid #ffff00;
+            padding: 15px;
+            margin: 20px 0;
+            color: #ffff00;
+        }
+        
+        .downloads {
+            display: flex;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .btn {
+            background: #00ff00;
+            color: #000;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background: #00dd00;
+            box-shadow: 0 0 15px #00ff00;
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: #0088ff;
+        }
+        
+        .btn-secondary:hover {
+            background: #0066dd;
+            box-shadow: 0 0 15px #0088ff;
+        }
+        
+        .upload-section {
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px dashed #00ff00;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+        }
+        
+        .file-input-wrapper input[type=file] {
+            opacity: 0;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        
+        .file-input-wrapper .btn {
+            pointer-events: none;
+        }
+        
+        #recipe-file-name {
+            margin: 15px 0;
+            color: #00ff00;
+            min-height: 24px;
+        }
+        
+        .format-selector {
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .format-selector label {
+            color: #00ff00;
+            font-weight: bold;
+        }
+        
+        .format-select {
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #00ff00;
+            color: #00ff00;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .format-select:focus {
+            outline: none;
+            border-color: #00dd00;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+        }
+        
+        .recipe-textarea {
+            width: 100%;
+            min-height: 300px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            padding: 15px;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            margin-top: 15px;
+        }
+        
+        .recipe-textarea:focus {
+            outline: none;
+            border-color: #00dd00;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+        }
+        
+        .recipe-textarea::placeholder {
+            color: rgba(0, 255, 0, 0.4);
+        }
+        
+        /* Toast notifications */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #00ff00;
+            padding: 15px 25px;
+            border-radius: 10px;
+            border: 2px solid #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+            z-index: 10000;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+            max-width: 400px;
+            word-wrap: break-word;
+        }
+        
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .toast-success {
+            border-color: #00ff00;
+            color: #00ff00;
+        }
+        
+        .toast-error {
+            border-color: #ff0000;
+            color: #ff0000;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+        }
+        
+        /* Flash animation for challenge section */
+        @keyframes flash {
+            0%, 100% { 
+                border-color: #00ff00;
+                box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+            }
+            50% { 
+                border-color: #00ff00;
+                box-shadow: 0 0 30px rgba(0, 255, 0, 0.8);
+            }
+        }
+        
+        .result {
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .result.success {
+            border-color: #00ff00;
+            background: rgba(0, 255, 0, 0.1);
+        }
+        
+        .result.error {
+            border-color: #ff0000;
+            background: rgba(255, 0, 0, 0.1);
+            color: #ff6666;
+        }
+        
+        .flag {
+            background: #000;
+            border: 2px solid #ffff00;
+            padding: 15px;
+            margin: 15px 0;
+            font-size: 1.2em;
+            text-align: center;
+            color: #ffff00;
+            font-weight: bold;
+        }
+        
+        .progress {
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #00ff00;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff00, #00dd00);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #000;
+            font-weight: bold;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(0, 255, 0, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #00ff00;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .instructions {
+            background: rgba(0, 136, 255, 0.1);
+            border: 2px solid #0088ff;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .instructions h3 {
+            color: #0088ff;
+            margin-bottom: 10px;
+        }
+        
+        .instructions ol {
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+        
+        .cyberchef-link {
+            color: #00ff00;
+            text-decoration: underline;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 20px;
+            color: #00dd00;
+            border-top: 2px solid #00ff00;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔐 CyberChef Playground CTF</h1>
+            <p class="subtitle">Reverse. Decrypt. Conquer.</p>
+        </header>
+        
+        <div class="instructions">
+            <h3>📋 How to Play</h3>
+            <ol>
+                <li>Download the challenge binary and encrypted file</li>
+                <li>Reverse engineer the binary to understand the encryption</li>
+                <li>Open <a href="https://gchq.github.io/CyberChef/" target="_blank" class="cyberchef-link">CyberChef</a> in a new tab</li>
+                <li>Create a recipe to decrypt the file back to "test"</li>
+                <li>Export your recipe (Save → Download recipe file)</li>
+                <li>Upload the recipe here to validate your solution</li>
+            </ol>
+        </div>
+        
+        <div class="progress">
+            <h3>Progress</h3>
+            <div id="progress-info"></div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+        </div>
+        
+        <div class="challenge-info" id="challenge-info">
+            <span class="level-badge" id="level-badge">Level 1</span>
+            <h2 id="challenge-name">Loading...</h2>
+            <p class="description" id="challenge-description"></p>
+            <div class="hint" id="challenge-hint"></div>
+            
+            <div class="downloads">
+                <a href="#" class="btn" id="download-binary">📦 Download Binary</a>
+                <a href="#" class="btn btn-secondary" id="download-encrypted">🔒 Download Encrypted File</a>
+            </div>
+        </div>
+        
+        <div class="upload-section">
+            <h2>Submit Your CyberChef Recipe</h2>
+            <p style="margin: 15px 0;">Copy your recipe from CyberChef and paste it here</p>
+            
+            <div class="format-selector">
+                <label>Recipe Format:</label>
+                <select id="recipe-format" class="format-select">
+                    <option value="json">Clean JSON</option>
+                    <option value="compact">Compact JSON</option>
+                    <option value="chef">Chef Format</option>
+                </select>
+            </div>
+            
+            <textarea id="recipe-input" class="recipe-textarea" placeholder="Paste your CyberChef recipe here...
+
+Example Clean JSON:
+[
+  {
+    &quot;op&quot;: &quot;XOR&quot;,
+    &quot;args&quot;: [
+      {&quot;option&quot;: &quot;Hex&quot;, &quot;string&quot;: &quot;42&quot;},
+      &quot;Standard&quot;,
+      false
+    ]
+  }
+]
+
+Example Compact JSON:
+[{&quot;op&quot;:&quot;XOR&quot;,&quot;args&quot;:[{&quot;option&quot;:&quot;Hex&quot;,&quot;string&quot;:&quot;42&quot;},&quot;Standard&quot;,false]}]
+
+Example Chef Format:
+XOR({'option':'Hex','string':'42'},'Standard',false)"></textarea>
+            
+            <button class="btn" id="submit-recipe" style="margin-top: 15px;">
+                🚀 Submit Recipe
+            </button>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p style="margin-top: 10px;">Validating your recipe...</p>
+            </div>
+        </div>
+        
+        <div class="result" id="result"></div>
+        
+        <footer>
+            <p>Built for defensive content engineers and CTF enthusiasts</p>
+            <p>Powered by CyberChef | Created for Blue Team Training</p>
+        </footer>
+    </div>
+    
+    <script>
+        let sessionId = null;
+        let currentLevel = 1;
+        
+        // Toast notification system
+        function showToast(message, type = 'success') {
+            // Remove existing toast if any
+            const existingToast = document.querySelector('.toast');
+            if (existingToast) {
+                existingToast.remove();
+            }
+            
+            // Create toast
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            // Trigger animation
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+        
+        // Initialize session
+        async function initSession() {
+            try {
+                const response = await fetch('/api/init', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                sessionId = data.sessionId;
+                currentLevel = data.currentLevel;
+                loadChallenge(currentLevel);
+                updateProgress();
+            } catch (error) {
+                console.error('Error initializing session:', error);
+            }
+        }
+        
+        // Load challenge information
+        async function loadChallenge(level) {
+            try {
+                // Smooth scroll to top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                
+                // Clear previous results
+                document.getElementById('result').style.display = 'none';
+                document.getElementById('recipe-input').value = '';
+                
+                // Show loading state
+                const challengeInfo = document.getElementById('challenge-info');
+                if (challengeInfo) {
+                    challengeInfo.style.opacity = '0.5';
+                }
+                
+                const response = await fetch(`/api/challenge/${level}`, {
+                    headers: {
+                        'X-Session-ID': sessionId
+                    }
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `HTTP ${response.status}`);
+                }
+                
+                const challenge = await response.json();
+                
+                document.getElementById('level-badge').textContent = `Level ${level}`;
+                document.getElementById('challenge-name').textContent = challenge.name;
+                document.getElementById('challenge-description').textContent = challenge.description;
+                document.getElementById('challenge-hint').innerHTML = `<strong>💡 Hint:</strong> ${challenge.hint}`;
+                
+                document.getElementById('download-binary').href = challenge.binaryUrl;
+                document.getElementById('download-encrypted').href = challenge.encryptedFileUrl;
+                
+                currentLevel = level;
+                
+                // Restore opacity and add flash effect
+                if (challengeInfo) {
+                    challengeInfo.style.opacity = '1';
+                    challengeInfo.style.animation = 'flash 0.5s ease-in-out';
+                    setTimeout(() => {
+                        challengeInfo.style.animation = '';
+                    }, 500);
+                }
+                
+                // Show success toast
+                showToast(`🎯 Level ${level} Loaded: ${challenge.name}`, 'success');
+                
+            } catch (error) {
+                console.error('Error loading challenge:', error);
+                
+                // Restore opacity
+                const challengeSection = document.querySelector('.challenge-section');
+                if (challengeSection) challengeSection.style.opacity = '1';
+                
+                showToast(`❌ Failed to load challenge: ${error.message}`, 'error');
+            }
+        }
+        
+        // Update progress bar
+        async function updateProgress() {
+            try {
+                const response = await fetch('/api/progress', {
+                    headers: {
+                        'X-Session-ID': sessionId
+                    }
+                });
+                const progress = await response.json();
+                
+                const totalLevels = 5;
+                const completed = progress.completedLevels.length;
+                const percentage = (completed / totalLevels) * 100;
+                
+                document.getElementById('progress-fill').style.width = percentage + '%';
+                document.getElementById('progress-fill').textContent = `${completed}/${totalLevels}`;
+                document.getElementById('progress-info').textContent = 
+                    `Completed: ${completed} of ${totalLevels} challenges`;
+            } catch (error) {
+                console.error('Error updating progress:', error);
+            }
+        }
+        
+        // Handle recipe submission
+        document.getElementById('submit-recipe').addEventListener('click', async () => {
+            const recipeInput = document.getElementById('recipe-input').value.trim();
+            const format = document.getElementById('recipe-format').value;
+            
+            if (!recipeInput) {
+                alert('Please paste your CyberChef recipe!');
+                return;
+            }
+            
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('submit-recipe').disabled = true;
+            
+            try {
+                // Send raw recipe to server - let server parse it
+                const response = await fetch(`/api/validate/${currentLevel}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-Session-ID': sessionId,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        recipe: recipeInput,
+                        format: format
+                    })
+                });
+                
+                const result = await response.json();
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('submit-recipe').disabled = false;
+                
+                const resultDiv = document.getElementById('result');
+                resultDiv.style.display = 'block';
+                
+                if (result.success) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <h2>✅ ${result.message}</h2>
+                        <div class="flag">${result.flag}</div>
+                        <p><strong>Decrypted content:</strong> ${result.decryptedContent}</p>
+                        ${result.nextLevel ? 
+                            `<button class="btn" onclick="loadChallenge(${result.nextLevel})">
+                                Next Challenge →
+                            </button>` : 
+                            '<p style="margin-top: 20px; font-size: 1.2em;">🎉 Congratulations! You completed all challenges!</p>'
+                        }
+                    `;
+                    
+                    if (result.nextLevel || result.isComplete) {
+                        updateProgress();
+                    }
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `
+                        <h2>❌ ${result.message}</h2>
+                        ${result.hint ? `<p><strong>Hint:</strong> ${result.hint}</p>` : ''}
+                        ${result.error ? `<p><strong>Error:</strong> ${result.error}</p>` : ''}
+                        ${result.expectedHash ? 
+                            `<p><small>Expected: ${result.expectedHash}<br>Got: ${result.gotHash}</small></p>` : 
+                            ''
+                        }
+                    `;
+                }
+                
+                // Clear recipe input on success
+                if (result.success) {
+                    document.getElementById('recipe-input').value = '';
+                }
+                
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('submit-recipe').disabled = false;
+                
+                const resultDiv = document.getElementById('result');
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `
+                    <h2>❌ Error</h2>
+                    <p>Failed to validate recipe. Please try again.</p>
+                    <p><small>${error.message}</small></p>
+                `;
+            }
+        });
+        
+        // Initialize on page load
+        window.addEventListener('load', initSession);
+    </script>
+</body>
+</html>

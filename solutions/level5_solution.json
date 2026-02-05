@@ -1,0 +1,30 @@
+[
+  {
+    "op": "SUB",
+    "args": [
+      {
+        "option": "Hex",
+        "string": "49"
+      }
+    ]
+  },
+  {
+    "op": "From Base64",
+    "args": [
+      "A-Za-z0-9+/=",
+      true,
+      false
+    ]
+  },
+  {
+    "op": "XOR",
+    "args": [
+      {
+        "option": "Hex",
+        "string": "5A"
+      },
+      "Standard",
+      false
+    ]
+  }
+]
