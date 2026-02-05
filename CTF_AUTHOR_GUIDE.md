@@ -4,6 +4,7 @@
 Challenges are now stored as separate JSON files in the challenges-config/ directory. Each challenge has its own configuration file with a solution recipe instead of a hardcoded hash.
 
 📁 Directory Structure
+```
 CyberChef-Playground/
 ├── challenges-config/          ← Challenge metadata
 │   ├── level1.json
@@ -23,6 +24,7 @@ CyberChef-Playground/
 │   ├── level3_validation.bin
 │   └── ...
 └── server.js
+```
 
 📝 Challenge File Format
 
