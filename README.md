@@ -5,7 +5,7 @@ A CTF-style challenge platform for learning cryptography and reverse engineering
 ## ✨ Features
 
 - 🎯 **Progressive Challenges**: Start easy, get harder
-- 🔗 **4 Recipe Formats**: Deep Link (NEW!), Clean JSON, Compact JSON, Chef Format
+- 🔗 **4 Recipe Formats**: Deep Link, Clean JSON, Compact JSON, Chef Format
 - 📊 **Progress Tracking**: See your completion status
 - 🏆 **Flag System**: Earn flags for each solved challenge
 - 🔧 **Easy CTF Creation**: Simple JSON-based challenge system
@@ -78,20 +78,150 @@ XOR({'option':'Hex','string':'42'},'Standard',false)
 
 ## 🚀 Quick Start
 
-### Installation
+### Option 1: Docker (Recommended! 🐳)
+
+**Easiest way to get started - works on Windows, Mac, and Linux!**
+
+#### Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and **running**
+
+#### Windows Users - Start Here! 🪟
+```powershell
+# 1. Start Docker Desktop from Start Menu (IMPORTANT!)
+# 2. Wait for whale icon in system tray to stop animating
+# 3. Open PowerShell in project folder
+
+cd G:\CyberChef-Playground
+
+# Build the Docker image (first time only, takes 2-5 min)
+docker-compose build
+
+# Start the application
+docker-compose up -d
+
+# Check if running
+docker-compose ps
+```
+
+**Access:** http://localhost:3000
+
+**Useful Commands:**
+```powershell
+# View logs
+docker-compose logs -f
+
+# Stop
+docker-compose down
+
+# Restart
+docker-compose restart
+```
+
+**Troubleshooting:**
+- ❌ "cannot find the file specified" → Docker Desktop not running! Start it first.
+- ❌ "port already in use" → Change port in docker-compose.yml
+- See [WINDOWS_QUICKSTART.md](WINDOWS_QUICKSTART.md) for complete Windows guide
+
+---
+
+#### Linux/Mac Users 🐧 🍎
 
 ```bash
+# Automated setup (easiest!)
+./setup.sh
+
+# OR manual setup
+docker-compose up -d
+
+# OR using Makefile
+make build && make run
+```
+
+**Access:** http://localhost:3000
+
+**Useful Commands:**
+```bash
+make logs      # View logs
+make stop      # Stop containers
+make restart   # Restart
+make shell     # Get shell access
+make help      # See all commands
+```
+
+See [DOCKER_QUICKSTART.md](DOCKER_QUICKSTART.md) for details.
+
+---
+
+### Option 2: Self-Hosted with npm
+
+**For local development without Docker**
+
+#### Prerequisites
+- Node.js 18+ and npm 9+
+
+#### Installation
+
+```bash
+# Install dependencies
 npm install
+
+# Start server (production mode)
+npm start
+
+# OR development mode (with auto-restart)
+npm run dev
 ```
 
-### Start Server
+**Access:** http://localhost:3000
+
+---
+
+### Option 3: Production Deployment (Docker + Nginx + SSL)
+
+**For public-facing deployments with HTTPS**
 
 ```bash
-npm start
-# Server runs on http://localhost:3000
+# Generate SSL certificates
+
+# For production (Let's Encrypt):
+sudo certbot --nginx -d your-domain.com
+
+# Update domain in nginx/conf.d/cyberchef.conf
+# Then start with production config
+docker-compose -f docker-compose.production.yml up -d
 ```
 
-### Play Challenges
+**Access:** https://your-domain.com
+
+**Production Features:**
+- ✅ Nginx reverse proxy
+- ✅ SSL/TLS encryption
+- ✅ Rate limiting (10 req/s API, 5 req/s downloads)
+- ✅ Security headers
+- ✅ Gzip compression
+- ✅ Static file caching
+
+See [DOCKER_GUIDE.md](DOCKER_GUIDE.md) for complete production setup including:
+- Cloud deployment (AWS ECS, Google Cloud Run, DigitalOcean, Kubernetes)
+- Monitoring & logging
+- Scaling strategies
+- Backup procedures
+
+---
+
+### 🎯 Which Option Should I Choose?
+
+| Use Case | Recommended Option | Why? |
+|----------|-------------------|------|
+| **Just want to try it** | Docker | Fastest, minimal setup |
+| **Windows user** | Docker | Best compatibility |
+| **Local development** | npm | Direct code access |
+| **Public CTF/Training** | Docker Production | SSL/TLS, hardened |
+| **Team deployment** | Docker Production | Scalable, maintainable |
+
+---
+
+## 🎓 Play Challenges
 
 1. Open http://localhost:3000
 2. Download challenge files
@@ -104,9 +234,9 @@ npm start
 
 ```
 CyberChef-Playground/
-├── server.js                  ← Main server (deep link support!)
+├── server.js                  ← Main server 
 ├── public/
-│   └── index.html            ← Frontend (4 format support!)
+│   └── index.html            ← Frontend 
 ├── challenges-config/        ← Challenge metadata
 │   ├── level1.json
 │   ├── level2.json
@@ -238,28 +368,10 @@ JSON.parse(string) → direct parsing
 - ✅ Rate limiting ready
 - ✅ No directory traversal
 
-## 📚 Documentation
-
-- [CTF Author Guide](CTF_AUTHOR_GUIDE.md) - Create custom challenges
-- [CyberChef Documentation](https://github.com/gchq/CyberChef/wiki) - Learn operations
-- [cyberchef-node](https://github.com/gchq/CyberChef-server) - Node.js API
-
-## 🎯 Challenge Examples
-
-### Level 1: XOR Warmup
-Simple single-byte XOR. Great for beginners.
-```
-Deep Link: https://gchq.github.io/CyberChef/#recipe=XOR(...)
-```
-
-### Level 2: Base64 + XOR
-Two-step decryption chain.
-```
-Deep Link: https://gchq.github.io/CyberChef/#recipe=From_Base64(...)XOR(...)
-```
-
-### Level 3+: Advanced Crypto
-Multi-operation chains with AES, custom encodings, etc.
+## 📚 References
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history and updates
+- [CyberChef Documentation](https://github.com/gchq/CyberChef/wiki) - Learn CyberChef operations
+- [cyberchef-node](https://github.com/gchq/CyberChef-server) - Node.js API docs
 
 ## 🤝 Contributing
 
@@ -280,16 +392,11 @@ Built for educational and training purposes. CyberChef is developed by GCHQ.
 - **cyberchef-node** - Node.js implementation
 - Built with ❤️ for blue team training
 
-## 🔗 Links
-
-- [CyberChef Web](https://gchq.github.io/CyberChef/)
-- [CyberChef GitHub](https://github.com/gchq/CyberChef)
-- [cyberchef-node](https://www.npmjs.com/package/cyberchef-node)
-
 ---
 
-**Ready to play?** Start with Level 1 and work your way up! 🚀
+**Ready to play?** 
+- 🐳 Docker: `docker-compose up -d`
+- 📦 npm: `npm start`
+- 🌐 Access: http://localhost:3000
 
-**Creating challenges?** Check out [CTF_AUTHOR_GUIDE.md](CTF_AUTHOR_GUIDE.md)! 📝
-
-**Deep link not working?** Make sure you're pasting the full URL including `https://`! 🔗
+**Need help?** Check the guides above or open an issue! 🆘

@@ -48,5 +48,3 @@ temp/
 
 # challenge 
 challenges/*plaintxt*
-reorganize.sh
-generate_challenges.py

@@ -1,16 +1,71 @@
 version: '3.8'
 
 services:
-  web:
-    build: .
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-    volumes:
-      - ./challenges:/app/challenges:ro
+  cyberchef-playground:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cyberchef-playground:latest
+    container_name: cyberchef-playground
     restart: unless-stopped
     
-  redis:
-    image: redis:alpine
-    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    
+    volumes:
+      # Mount challenge files (optional - for easy challenge management)
+      - ./challenges:/app/challenges:ro
+      - ./challenges-config:/app/challenges-config:ro
+      - ./solutions:/app/solutions:ro
+    
+    # Resource limits (adjust based on your needs)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    
+    # Read-only root filesystem for security
+    # (with tmpfs for /tmp if needed)
+    read_only: true
+    tmpfs:
+      - /tmp
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Network
+    networks:
+      - cyberchef-network
+
+networks:
+  cyberchef-network:
+    driver: bridge
+
+# Optional: Add volume for persistent data if needed in future
+# volumes:
+#   challenge-data:
+#     driver: local
