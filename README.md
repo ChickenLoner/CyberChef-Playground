@@ -4,16 +4,16 @@ A CTF-style challenge platform for learning cryptography and reverse engineering
 
 ## ✨ Features
 
-- 🎯 **Progressive Challenges**: Start easy, get harder
+- 🎯 **Progressive Challenges**: Start from easy to hard challenge
 - 🔗 **4 Recipe Formats**: Deep Link, Clean JSON, Compact JSON, Chef Format
-- 📊 **Progress Tracking**: See your completion status
 - 🏆 **Flag System**: Earn flags for each solved challenge
 - 🔧 **Easy CTF Creation**: Simple JSON-based challenge system
 - 🚀 **No Browser Needed**: Pure Node.js with cyberchef-node
+- 🐳 **Docker**: Docker file and docker compose ready to deploy
 
-## 🆕 NEW: Deep Link Support!
+## 🆕 Deep Link Support!
 
-The #1 requested feature is here! Now you can **paste the full CyberChef URL** directly - no need to export recipes manually.
+We support the **the full CyberChef URL** directly - no need to export recipes manually.
 
 ### How It Works
 
@@ -83,16 +83,10 @@ XOR({'option':'Hex','string':'42'},'Standard',false)
 **Easiest way to get started - works on Windows, Mac, and Linux!**
 
 #### Prerequisites
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and **running**
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) or docker installed and **running** 
 
-#### Windows Users - Start Here! 🪟
-```powershell
-# 1. Start Docker Desktop from Start Menu (IMPORTANT!)
-# 2. Wait for whale icon in system tray to stop animating
-# 3. Open PowerShell in project folder
-
-cd G:\CyberChef-Playground
-
+#### Start Here! 🪟
+```bash
 # Build the Docker image (first time only, takes 2-5 min)
 docker-compose build
 
@@ -120,35 +114,6 @@ docker-compose restart
 **Troubleshooting:**
 - ❌ "cannot find the file specified" → Docker Desktop not running! Start it first.
 - ❌ "port already in use" → Change port in docker-compose.yml
-- See [WINDOWS_QUICKSTART.md](WINDOWS_QUICKSTART.md) for complete Windows guide
-
----
-
-#### Linux/Mac Users 🐧 🍎
-
-```bash
-# Automated setup (easiest!)
-./setup.sh
-
-# OR manual setup
-docker-compose up -d
-
-# OR using Makefile
-make build && make run
-```
-
-**Access:** http://localhost:3000
-
-**Useful Commands:**
-```bash
-make logs      # View logs
-make stop      # Stop containers
-make restart   # Restart
-make shell     # Get shell access
-make help      # See all commands
-```
-
-See [DOCKER_QUICKSTART.md](DOCKER_QUICKSTART.md) for details.
 
 ---
 
@@ -200,12 +165,6 @@ docker-compose -f docker-compose.production.yml up -d
 - ✅ Security headers
 - ✅ Gzip compression
 - ✅ Static file caching
-
-See [DOCKER_GUIDE.md](DOCKER_GUIDE.md) for complete production setup including:
-- Cloud deployment (AWS ECS, Google Cloud Run, DigitalOcean, Kubernetes)
-- Monitoring & logging
-- Scaling strategies
-- Backup procedures
 
 ---
 
