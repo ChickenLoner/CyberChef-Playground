@@ -56,6 +56,44 @@ async function getTotalChallenges() {
 // User progress tracking
 const userProgress = new Map();
 
+// Parse CyberChef deep link URL to extract recipe
+function parseDeepLink(url) {
+  try {
+    console.log('Parsing deep link:', url);
+    
+    // Extract the hash part (everything after #)
+    const hashIndex = url.indexOf('#');
+    if (hashIndex === -1) {
+      throw new Error('Invalid deep link: No # found in URL');
+    }
+    
+    const hashPart = url.substring(hashIndex + 1);
+    
+    // Parse URL parameters from hash
+    const params = new URLSearchParams(hashPart);
+    
+    // Get the recipe parameter
+    let recipeString = params.get('recipe');
+    if (!recipeString) {
+      throw new Error('Invalid deep link: No recipe parameter found');
+    }
+    
+    console.log('Raw recipe from URL:', recipeString);
+    
+    // URL decode the recipe
+    recipeString = decodeURIComponent(recipeString);
+    console.log('Decoded recipe:', recipeString);
+    
+    // Parse the recipe string which is in Chef format
+    // Example: To_Base64('A-Za-z0-9+/=')
+    return parseChefFormat(recipeString);
+    
+  } catch (error) {
+    console.error('Deep link parsing error:', error.message);
+    throw new Error(`Failed to parse deep link: ${error.message}`);
+  }
+}
+
 // Parse Chef format string to JSON recipe
 function parseChefFormat(chefString) {
   // Chef format example: XOR({'option':'Hex','string':'42'},'Standard',false)
@@ -251,7 +289,11 @@ app.post('/api/validate/:level', async (req, res) => {
     // Parse recipe based on format
     let parsedRecipe;
     try {
-      if (format === 'chef') {
+      if (format === 'deeplink') {
+        // Parse CyberChef deep link URL
+        parsedRecipe = parseDeepLink(recipe);
+        console.log('Parsed from deep link:', JSON.stringify(parsedRecipe, null, 2));
+      } else if (format === 'chef') {
         // Parse Chef format: XOR({'option':'Hex','string':'42'},'Standard',false)
         parsedRecipe = parseChefFormat(recipe);
       } else {
@@ -354,6 +396,7 @@ console.log('CyberChef Playground - Node.js API Mode');
 console.log('='.repeat(60));
 console.log('\n✓ Using cyberchef-node v2.0.3 (Node.js compatible)');
 console.log('✓ ALL 300+ operations supported!');
+console.log('✓ Deep link support enabled!');
 console.log('✓ No browser needed - pure Node.js\n');
 
 app.listen(PORT, () => {

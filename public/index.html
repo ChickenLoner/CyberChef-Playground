@@ -155,6 +155,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            justify-content: center;
         }
         
         .format-selector label {
@@ -177,6 +178,22 @@
             outline: none;
             border-color: #00dd00;
             box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+        }
+        
+        .format-help {
+            background: rgba(0, 136, 255, 0.1);
+            border: 2px solid #0088ff;
+            border-radius: 5px;
+            padding: 10px 15px;
+            margin-top: 10px;
+            color: #0088ff;
+            font-size: 13px;
+            text-align: left;
+            display: none;
+        }
+        
+        .format-help.show {
+            display: block;
         }
         
         .recipe-textarea {
@@ -384,8 +401,8 @@
                 <li>Reverse engineer the binary to understand the encryption</li>
                 <li>Open <a href="https://gchq.github.io/CyberChef/" target="_blank" class="cyberchef-link">CyberChef</a> in a new tab</li>
                 <li>Create a recipe to decrypt the file back to "test"</li>
-                <li>Export your recipe (Save → select one of 3 supports recipe format)</li>
-                <li>Paste the recipe here to validate your solution</li>
+                <li>Export your recipe (Save → select one of 4 supported formats) OR copy the URL</li>
+                <li>Paste the recipe/URL here to validate your solution</li>
             </ol>
         </div>
         
@@ -410,18 +427,26 @@
         
         <div class="upload-section">
             <h2>Submit Your CyberChef Recipe</h2>
-            <p style="margin: 15px 0;">Copy your recipe from CyberChef and paste it here</p>
+            <p style="margin: 15px 0;">Copy your recipe from CyberChef and paste it here, or paste the full CyberChef URL</p>
             
             <div class="format-selector">
                 <label>Recipe Format:</label>
                 <select id="recipe-format" class="format-select">
+                    <option value="deeplink">🔗 Deep Link (URL)</option>
                     <option value="json">Clean JSON</option>
                     <option value="compact">Compact JSON</option>
                     <option value="chef">Chef Format</option>
                 </select>
             </div>
             
-            <textarea id="recipe-input" class="recipe-textarea" placeholder="Paste your CyberChef recipe here...
+            <div id="format-help" class="format-help">
+                <!-- Help text will be dynamically inserted here -->
+            </div>
+            
+            <textarea id="recipe-input" class="recipe-textarea" placeholder="Paste your CyberChef URL or recipe here...
+
+Example Deep Link:
+https://gchq.github.io/CyberChef/#recipe=XOR(%7B'option':'Hex','string':'42'%7D,'Standard',false)&input=c2Rhc2FkYXNkYXNkYXNkc2Fk
 
 Example Clean JSON:
 [
@@ -462,6 +487,34 @@ XOR({'option':'Hex','string':'42'},'Standard',false)"></textarea>
     <script>
         let sessionId = null;
         let currentLevel = 1;
+        
+        // Format help texts
+        const formatHelp = {
+            deeplink: '🔗 <strong>Deep Link:</strong> Paste the full CyberChef URL from your browser. We\'ll automatically extract the recipe and ignore the input. Example: https://gchq.github.io/CyberChef/#recipe=To_Base64(\'A-Za-z0-9%2B/%3D\')&input=...',
+            json: '📄 <strong>Clean JSON:</strong> In CyberChef, click "Save recipe" → select "Clean JSON" → copy and paste here.',
+            compact: '📦 <strong>Compact JSON:</strong> In CyberChef, click "Save recipe" → select "Compact JSON" → copy and paste here.',
+            chef: '🔧 <strong>Chef Format:</strong> In CyberChef, click "Save recipe" → select "Chef format" → copy and paste here.'
+        };
+        
+        // Update format help when format changes
+        document.getElementById('recipe-format').addEventListener('change', function() {
+            const formatHelpDiv = document.getElementById('format-help');
+            const selectedFormat = this.value;
+            
+            formatHelpDiv.innerHTML = formatHelp[selectedFormat] || '';
+            formatHelpDiv.classList.add('show');
+            
+            // Update placeholder
+            const textarea = document.getElementById('recipe-input');
+            if (selectedFormat === 'deeplink') {
+                textarea.placeholder = 'Paste your CyberChef URL here...\n\nExample:\nhttps://gchq.github.io/CyberChef/#recipe=XOR(%7B\'option\':\'Hex\',\'string\':\'42\'%7D,\'Standard\',false)&input=c2Rhc2FkYXNkYXNkYXNkc2Fk';
+            } else {
+                textarea.placeholder = textarea.getAttribute('placeholder');
+            }
+        });
+        
+        // Show help on page load
+        document.getElementById('recipe-format').dispatchEvent(new Event('change'));
         
         // Toast notification system
         function showToast(message, type = 'success') {
@@ -616,7 +669,7 @@ XOR({'option':'Hex','string':'42'},'Standard',false)"></textarea>
             const format = document.getElementById('recipe-format').value;
             
             if (!recipeInput) {
-                alert('Please paste your CyberChef recipe!');
+                showToast('⚠️ Please paste your CyberChef recipe or URL!', 'error');
                 return;
             }
             
@@ -662,6 +715,9 @@ XOR({'option':'Hex','string':'42'},'Standard',false)"></textarea>
                     if (result.nextLevel || result.isComplete) {
                         updateProgress();
                     }
+                    
+                    // Show success toast
+                    showToast('🎉 Challenge solved!', 'success');
                 } else {
                     resultDiv.className = 'result error';
                     resultDiv.innerHTML = `
@@ -669,6 +725,9 @@ XOR({'option':'Hex','string':'42'},'Standard',false)"></textarea>
                         ${result.hint ? `<p><strong>Hint:</strong> ${result.hint}</p>` : ''}
                         ${result.error ? `<p><strong>Error:</strong> ${result.error}</p>` : ''}
                     `;
+                    
+                    // Show error toast
+                    showToast('❌ Incorrect solution', 'error');
                 }
                 
                 // Clear recipe input on success
@@ -688,6 +747,8 @@ XOR({'option':'Hex','string':'42'},'Standard',false)"></textarea>
                     <p>Failed to validate recipe. Please try again.</p>
                     <p><small>${error.message}</small></p>
                 `;
+                
+                showToast('❌ Validation error', 'error');
             }
         });
         
