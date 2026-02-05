@@ -223,14 +223,24 @@ Server parses format:
   • JSON → Parse directly
          ↓
 Run user recipe on validation file
+  → Get output as RAW BYTES (Buffer)
          ↓
 Run solution recipe on same file
+  → Get expected output as RAW BYTES
          ↓
-Compare SHA256 hashes
+Calculate SHA256 on raw bytes
+  → User SHA256 vs Expected SHA256
          ↓
 Match? → Award flag!
 No match? → Show hint
 ```
+
+**Key Feature:** Validation works on **raw bytes**, not strings!
+- ✅ Perfect for binary files (PE, ELF, Mach-O)
+- ✅ Works with shellcode extraction
+- ✅ Supports malware payload analysis (Cobalt Strike, etc.)
+- ✅ No encoding corruption
+- ✅ Text files work too!
 
 ## 🎨 Creating Custom Challenges
 

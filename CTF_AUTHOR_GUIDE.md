@@ -382,31 +382,25 @@ Using Custom Encoding (solutions/levelN_solution.json)
 🔍 How Validation Works
 
 ```
-1. User submits recipe (any of 4 formats)
-   ↓
-2. Server parses recipe format:
-   - Deep Link: Extract from URL, decode, parse
-   - Chef Format: Parse operations
-   - JSON: Parse directly
-   ↓
-3. Server runs user's recipe on validation file
-   → Gets user output
-   ↓
-4. Server runs solution recipe on same file
-   → Gets expected output
-   ↓
-5. Server compares SHA256 hashes
-   → Match? Award flag!
-   → No match? Show hint
+User submits recipe (any of 4 formats)
+         ↓
+Server parses format:
+  • Deep Link → Extract from URL + decode
+  • Chef Format → Parse operations
+  • JSON → Parse directly
+         ↓
+Run user recipe on validation file
+  → Get output as RAW BYTES (Buffer)
+         ↓
+Run solution recipe on same file
+  → Get expected output as RAW BYTES
+         ↓
+Calculate SHA256 on raw bytes
+  → User SHA256 vs Expected SHA256
+         ↓
+Match? → Award flag!
+No match? → Show hint
 ```
-
-📊 Challenge Difficulty Progression
-
-Recommended progression:
-- **Level 1-2**: Single operation (XOR, Base64)
-- **Level 3-4**: Two operations
-- **Level 5-7**: Three operations
-- **Level 8+**: Complex chains, custom crypto
 
 🛠️ Useful CyberChef Operations
 

@@ -48,3 +48,6 @@ temp/
 
 # challenge 
 challenges/*plaintxt*
+challenges-config/level6.json
+solutions/level6_solution.json
+challenges/level6*

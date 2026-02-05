@@ -172,12 +172,15 @@ async function executeCyberChefRecipe(inputData, recipe) {
     // Bake the recipe
     const result = await chef.bake(dish, recipe);
     
-    // Get the result as string
-    const output = await result.get(chef.Dish.STRING);
+    // Get the result as ArrayBuffer (raw bytes) - works for both binary and text
+    const output = await result.get(chef.Dish.ARRAY_BUFFER);
     
-    console.log(`Result: "${output}" (${output.length} chars)`);
+    // Convert ArrayBuffer to Buffer for Node.js operations
+    const buffer = Buffer.from(output);
     
-    return output;
+    console.log(`Result: ${buffer.length} bytes (${buffer.slice(0, 64).toString('hex')}${buffer.length > 64 ? '...' : ''})`);
+    
+    return buffer;
     
   } catch (error) {
     console.error('CyberChef execution error:', error.message);
@@ -316,7 +319,7 @@ app.post('/api/validate/:level', async (req, res) => {
     const validationPath = path.join(__dirname, 'challenges', challenge.validationFile);
     const validationData = await fs.readFile(validationPath);
     
-    console.log(`Validation file: ${validationData.length} bytes, hex: ${validationData.toString('hex')}`);
+    console.log(`Validation file: ${validationData.length} bytes, hex: ${validationData.slice(0, 32).toString('hex')}${validationData.length > 32 ? '...' : ''}`);
     
     // Execute user's recipe on validation data
     const userResult = await executeCyberChefRecipe(validationData, parsedRecipe);
@@ -324,14 +327,12 @@ app.post('/api/validate/:level', async (req, res) => {
     // Execute solution recipe on validation data
     const expectedResult = await executeCyberChefRecipe(validationData, challenge.solutionRecipe);
     
-    // Calculate hashes
+    // Calculate hashes on raw bytes (works for both binary and text)
     const userHash = crypto.createHash('sha256').update(userResult).digest('hex');
     const expectedHash = crypto.createHash('sha256').update(expectedResult).digest('hex');
     
-    console.log(`User result: ${userResult.length} chars`);
-    console.log(`Expected result: ${expectedResult.length} chars`);
-    console.log(`User hash:     ${userHash}`);
-    console.log(`Expected hash: ${expectedHash}`);
+    console.log(`User result: ${userResult.length} bytes, SHA256: ${userHash}`);
+    console.log(`Expected result: ${expectedResult.length} bytes, SHA256: ${expectedHash}`);
     console.log(`Match: ${userHash === expectedHash ? '✓ YES' : '✗ NO'}`);
     console.log('='.repeat(50) + '\n');
     
@@ -373,7 +374,7 @@ app.post('/api/validate/:level', async (req, res) => {
 });
 
 // Get user progress
-app.get('/api/progress', (req, res) => {
+app.get('/api/progress', async (req, res) => {
   const sessionId = req.headers['x-session-id'];
   
   if (!sessionId || !userProgress.has(sessionId)) {
@@ -381,7 +382,12 @@ app.get('/api/progress', (req, res) => {
   }
   
   const progress = userProgress.get(sessionId);
-  res.json(progress);
+  const totalChallenges = await getTotalChallenges();
+  
+  res.json({
+    ...progress,
+    totalChallenges
+  });
 });
 
 // Serve frontend

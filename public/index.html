@@ -397,10 +397,10 @@
         <div class="instructions">
             <h3>📋 How to Play</h3>
             <ol>
-                <li>Download the challenge binary and encrypted file</li>
-                <li>Reverse engineer the binary to understand the encryption</li>
+                <li>Download the challenge package</li>
+                <li>Read the challenge description and understand the encryption/algorithm</li>
                 <li>Open <a href="https://gchq.github.io/CyberChef/" target="_blank" class="cyberchef-link">CyberChef</a> in a new tab</li>
-                <li>Create a recipe to decrypt the file back to "test"</li>
+                <li>Create a recipe to decrypt the file (or extract something based on the challenge)</li>
                 <li>Export your recipe (Save → select one of 4 supported formats) OR copy the URL</li>
                 <li>Paste the recipe/URL here to validate your solution</li>
             </ol>
@@ -650,7 +650,7 @@ XOR({'option':'Hex','string':'42'},'Standard',false)"></textarea>
                 });
                 const progress = await response.json();
                 
-                const totalLevels = 5;
+                const totalLevels = progress.totalChallenges || 5; // Fallback to 5
                 const completed = progress.completedLevels.length;
                 const percentage = (completed / totalLevels) * 100;
                 
