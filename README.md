@@ -338,7 +338,6 @@ JSON.parse(string) → direct parsing
 - ✅ No directory traversal
 
 ## 📚 References
-- **[CHANGELOG.md](CHANGELOG.md)** - Version history and updates
 - [CyberChef Documentation](https://github.com/gchq/CyberChef/wiki) - Learn CyberChef operations
 - [cyberchef-node](https://github.com/gchq/CyberChef-server) - Node.js API docs
 
