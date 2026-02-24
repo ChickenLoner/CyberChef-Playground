@@ -17,10 +17,8 @@ services:
       - PORT=3000
     
     volumes:
-      # Mount challenge files (optional - for easy challenge management)
+      # Mount challenges directory (each challenge in its own subfolder)
       - ./challenges:/app/challenges:ro
-      - ./challenges-config:/app/challenges-config:ro
-      - ./solutions:/app/solutions:ro
     
     # Resource limits (adjust based on your needs)
     deploy:
