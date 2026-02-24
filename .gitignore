@@ -46,6 +46,6 @@ temp/
 # Docker volumes
 .docker/
 
-# Challenges are managed separately via CCPG-Challenges repo
-# Run: npm run sync  (or node sync.js) to pull them locally
-challenges/
+# Challenges are managed separately via CCPG-Challenges repo.
+# Run: npm run sync  — clones/pulls into .ccpg-challenges/
+.ccpg-challenges/

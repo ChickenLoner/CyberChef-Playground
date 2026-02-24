@@ -23,7 +23,7 @@ RUN npm ci --only=production && \
 # Stage 2: Sync — clone challenges from CCPG-Challenges repo
 FROM alpine/git AS challenges
 
-WORKDIR /challenges
+WORKDIR /ccpg-challenges
 RUN git clone https://github.com/ChickenLoner/CCPG-Challenges.git .
 
 # Stage 3: Production image
@@ -48,12 +48,15 @@ COPY --chown=nodejs:nodejs server.js ./
 COPY --chown=nodejs:nodejs sync.js ./
 COPY --chown=nodejs:nodejs public ./public
 
-# Copy challenges from sync stage (cloned from CCPG-Challenges)
-COPY --from=challenges --chown=nodejs:nodejs /challenges ./challenges
+# Copy only the challenges/ subfolder from the cloned CCPG-Challenges repo
+COPY --from=challenges --chown=nodejs:nodejs /ccpg-challenges/challenges ./challenges
 
 # Create necessary directories with correct permissions
 RUN mkdir -p /app/challenges /app/public && \
     chown -R nodejs:nodejs /app
+
+# Tell server.js where challenges live inside the container
+ENV CHALLENGES_DIR=/app/challenges
 
 # Switch to non-root user
 USER nodejs
