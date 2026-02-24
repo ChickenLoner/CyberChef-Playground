@@ -397,13 +397,33 @@ app.get('/', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-console.log('\n' + '='.repeat(60));
-console.log('CyberChef Playground - Node.js API Mode');
-console.log('='.repeat(60));
-console.log('\n✓ Using cyberchef-node v2.0.3 (Node.js compatible)');
-console.log('✓ ALL 300+ operations supported!');
-console.log('✓ Deep link support enabled!');
-console.log('✓ No browser needed - pure Node.js\n');
+// Check challenges directory exists — if not, guide the user to run sync
+const challengesDir = path.join(__dirname, 'challenges');
+try {
+  const entries = await fs.readdir(challengesDir, { withFileTypes: true });
+  const levels = entries.filter(e => e.isDirectory() && /^level\d+$/.test(e.name));
+  if (levels.length === 0) {
+    throw new Error('No challenge folders found');
+  }
+  console.log('\n' + '='.repeat(60));
+  console.log('CyberChef Playground - Node.js API Mode');
+  console.log('='.repeat(60));
+  console.log('\n✓ Using cyberchef-node v2.0.3 (Node.js compatible)');
+  console.log('✓ ALL 300+ operations supported!');
+  console.log('✓ Deep link support enabled!');
+  console.log(`✓ ${levels.length} challenge(s) loaded from CCPG-Challenges\n`);
+} catch {
+  console.error('\n' + '='.repeat(60));
+  console.error('✗ Challenges not found!');
+  console.error('='.repeat(60));
+  console.error('\nThe challenges directory is empty or missing.');
+  console.error('Run the following command to sync challenges from CCPG-Challenges:\n');
+  console.error('  npm run sync\n');
+  console.error('Or clone manually:');
+  console.error('  git clone https://github.com/ChickenLoner/CCPG-Challenges.git challenges\n');
+  console.error('='.repeat(60) + '\n');
+  process.exit(1);
+}
 
 app.listen(PORT, () => {
   console.log(`✓ Server running on port ${PORT}`);

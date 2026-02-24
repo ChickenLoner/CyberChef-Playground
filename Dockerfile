@@ -1,10 +1,10 @@
 # CyberChef Playground Docker Image
 # Multi-stage build for optimal image size
 
-# Stage 1: Base Node.js image
+# Stage 1: Build — install Node deps
 FROM node:20-alpine AS base
 
-# Install build dependencies
+# Install build dependencies (includes git for cloning challenges)
 RUN apk add --no-cache \
     python3 \
     make \
@@ -20,7 +20,13 @@ COPY package*.json ./
 RUN npm ci --only=production && \
     npm cache clean --force
 
-# Stage 2: Production image
+# Stage 2: Sync — clone challenges from CCPG-Challenges repo
+FROM alpine/git AS challenges
+
+WORKDIR /challenges
+RUN git clone https://github.com/ChickenLoner/CCPG-Challenges.git .
+
+# Stage 3: Production image
 FROM node:20-alpine
 
 # Add labels for metadata
@@ -34,13 +40,16 @@ RUN addgroup -g 1001 -S nodejs && \
 
 WORKDIR /app
 
-# Copy dependencies from base stage
+# Copy dependencies from build stage
 COPY --from=base /app/node_modules ./node_modules
 
 # Copy application files
 COPY --chown=nodejs:nodejs server.js ./
+COPY --chown=nodejs:nodejs sync.js ./
 COPY --chown=nodejs:nodejs public ./public
-COPY --chown=nodejs:nodejs challenges ./challenges
+
+# Copy challenges from sync stage (cloned from CCPG-Challenges)
+COPY --from=challenges --chown=nodejs:nodejs /challenges ./challenges
 
 # Create necessary directories with correct permissions
 RUN mkdir -p /app/challenges /app/public && \

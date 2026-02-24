@@ -47,8 +47,6 @@ temp/
 # Docker volumes
 .docker/
 
-# challenge 
-challenges/*plaintxt*
-challenges-config/level6.json
-solutions/level6_solution.json
-challenges/level6*
+# Challenges are managed separately via CCPG-Challenges repo
+# Run: npm run sync  (or node sync.js) to pull them locally
+challenges/
