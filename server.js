@@ -14,7 +14,7 @@ app.use(express.json({ limit: '10mb' })); // Increase limit for large recipes
 app.use(express.static('public'));
 app.use('/challenges', express.static('challenges'));
 
-// Load challenges from separate config files
+// Load challenges from per-challenge folders
 const challengesCache = new Map();
 
 async function loadChallenge(level) {
@@ -22,18 +22,18 @@ async function loadChallenge(level) {
   if (challengesCache.has(level)) {
     return challengesCache.get(level);
   }
-  
+
   try {
-    // Load challenge config
-    const configPath = path.join(__dirname, 'challenges-config', `level${level}.json`);
+    // Load challenge config from per-challenge folder: challenges/levelN/challenge.json
+    const configPath = path.join(__dirname, 'challenges', `level${level}`, 'challenge.json');
     const data = await fs.readFile(configPath, 'utf8');
     const challenge = JSON.parse(data);
-    
-    // Load solution recipe from separate file
-    const solutionPath = path.join(__dirname, 'solutions', challenge.solutionFile);
+
+    // Load solution recipe from same folder: challenges/levelN/solution.json
+    const solutionPath = path.join(__dirname, 'challenges', `level${level}`, 'solution.json');
     const solutionData = await fs.readFile(solutionPath, 'utf8');
     challenge.solutionRecipe = JSON.parse(solutionData);
-    
+
     challengesCache.set(level, challenge);
     return challenge;
   } catch (error) {
@@ -42,12 +42,12 @@ async function loadChallenge(level) {
   }
 }
 
-// Get total number of challenges
+// Get total number of challenges by counting levelN subdirectories
 async function getTotalChallenges() {
   try {
-    const configDir = path.join(__dirname, 'challenges-config');
-    const files = await fs.readdir(configDir);
-    return files.filter(f => f.startsWith('level') && f.endsWith('.json')).length;
+    const challengesDir = path.join(__dirname, 'challenges');
+    const entries = await fs.readdir(challengesDir, { withFileTypes: true });
+    return entries.filter(e => e.isDirectory() && /^level\d+$/.test(e.name)).length;
   } catch (error) {
     return 5; // Default fallback
   }
@@ -215,10 +215,10 @@ app.get('/api/challenge/:level', async (req, res) => {
     return res.status(404).json({ error: 'Challenge not found' });
   }
   
-  // Build download URLs for all challenge files
+  // Build download URLs for all challenge files (served from per-challenge folder)
   const files = challenge.challengeFiles.map(f => ({
     name: f.name,
-    url: `/challenges/${f.file}`,
+    url: `/challenges/level${level}/${f.file}`,
     description: f.description || null
   }));
   
@@ -231,19 +231,19 @@ app.get('/api/challenge/:level', async (req, res) => {
   });
 });
 
-// Download challenge files
-app.get('/challenges/:filename', async (req, res) => {
+// Download challenge files from per-challenge folders
+app.get('/challenges/:level/:filename', async (req, res) => {
   try {
-    const filename = req.params.filename;
-    const sanitized = path.basename(filename);
-    const filepath = path.join(__dirname, 'challenges', sanitized);
-    
+    const level = req.params.level;
+    const filename = path.basename(req.params.filename); // prevent path traversal
+    const filepath = path.join(__dirname, 'challenges', level, filename);
+
     try {
       await fs.access(filepath);
     } catch (error) {
       return res.status(404).json({ error: 'File not found' });
     }
-    
+
     res.download(filepath, (err) => {
       if (err) {
         console.error('Download error:', err);
@@ -315,8 +315,8 @@ app.post('/api/validate/:level', async (req, res) => {
       });
     }
     
-    // Read validation file (different from sample/practice file)
-    const validationPath = path.join(__dirname, 'challenges', challenge.validationFile);
+    // Read validation file from per-challenge folder
+    const validationPath = path.join(__dirname, 'challenges', `level${level}`, challenge.validationFile);
     const validationData = await fs.readFile(validationPath);
     
     console.log(`Validation file: ${validationData.length} bytes, hex: ${validationData.slice(0, 32).toString('hex')}${validationData.length > 32 ? '...' : ''}`);

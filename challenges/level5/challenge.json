@@ -11,6 +11,5 @@
       "description": "Binary and sample encrypted file"
     }
   ],
-  "validationFile": "level5_validation.bin",
-  "solutionFile": "level5_solution.json"
+  "validationFile": "level5_validation.bin"
 }

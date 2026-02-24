@@ -40,12 +40,10 @@ COPY --from=base /app/node_modules ./node_modules
 # Copy application files
 COPY --chown=nodejs:nodejs server.js ./
 COPY --chown=nodejs:nodejs public ./public
-COPY --chown=nodejs:nodejs challenges-config ./challenges-config
-COPY --chown=nodejs:nodejs solutions ./solutions
 COPY --chown=nodejs:nodejs challenges ./challenges
 
 # Create necessary directories with correct permissions
-RUN mkdir -p /app/challenges /app/challenges-config /app/solutions /app/public && \
+RUN mkdir -p /app/challenges /app/public && \
     chown -R nodejs:nodejs /app
 
 # Switch to non-root user

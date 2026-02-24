@@ -21,6 +21,5 @@
       "description": "Encrypted sample file to try out recipe"
     }
   ],
-  "validationFile": "level3_validation.bin",
-  "solutionFile": "level3_solution.json"
+  "validationFile": "level3_validation.bin"
 }
