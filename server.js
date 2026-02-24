@@ -8,249 +8,212 @@ import chef from 'cyberchef-node';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Challenges are stored in a separate repo (CCPG-Challenges).
+// Locally: run `npm run sync` → clones into .ccpg-challenges/challenges/
+// Docker:  baked in at build time, overridden via CHALLENGES_DIR env var.
+const CHALLENGES_DIR = process.env.CHALLENGES_DIR
+  || path.join(__dirname, '.ccpg-challenges', 'challenges');
+
 const app = express();
 
-app.use(express.json({ limit: '10mb' })); // Increase limit for large recipes
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static('public'));
-app.use('/challenges', express.static('challenges'));
+app.use('/challenges', express.static(CHALLENGES_DIR));
 
-// Load challenges from per-challenge folders
-const challengesCache = new Map();
+// ---------------------------------------------------------------------------
+// Challenge registry — loaded once at startup, keyed by id (integer).
+// Each entry has the challenge config + solutionRecipe + folderName.
+// ---------------------------------------------------------------------------
+const challengesById = new Map(); // id → challenge object
 
-async function loadChallenge(level) {
-  // Check cache first
-  if (challengesCache.has(level)) {
-    return challengesCache.get(level);
+async function loadAllChallenges() {
+  challengesById.clear();
+
+  const entries = await fs.readdir(CHALLENGES_DIR, { withFileTypes: true });
+  const folders = entries.filter(e => e.isDirectory());
+
+  for (const folder of folders) {
+    try {
+      const configPath   = path.join(CHALLENGES_DIR, folder.name, 'challenge.json');
+      const solutionPath = path.join(CHALLENGES_DIR, folder.name, 'solution.json');
+
+      const challenge = JSON.parse(await fs.readFile(configPath, 'utf8'));
+      challenge.solutionRecipe = JSON.parse(await fs.readFile(solutionPath, 'utf8'));
+      challenge.folderName = folder.name;
+
+      challengesById.set(challenge.id, challenge);
+    } catch (e) {
+      console.warn(`  ⚠ Skipping "${folder.name}": ${e.message}`);
+    }
   }
 
-  try {
-    // Load challenge config from per-challenge folder: challenges/levelN/challenge.json
-    const configPath = path.join(__dirname, 'challenges', `level${level}`, 'challenge.json');
-    const data = await fs.readFile(configPath, 'utf8');
-    const challenge = JSON.parse(data);
-
-    // Load solution recipe from same folder: challenges/levelN/solution.json
-    const solutionPath = path.join(__dirname, 'challenges', `level${level}`, 'solution.json');
-    const solutionData = await fs.readFile(solutionPath, 'utf8');
-    challenge.solutionRecipe = JSON.parse(solutionData);
-
-    challengesCache.set(level, challenge);
-    return challenge;
-  } catch (error) {
-    console.error(`Failed to load challenge ${level}:`, error.message);
-    return null;
-  }
+  // Keep map sorted by id so iteration order matches progression
+  const sorted = [...challengesById.entries()].sort(([a], [b]) => a - b);
+  challengesById.clear();
+  for (const [id, ch] of sorted) challengesById.set(id, ch);
 }
 
-// Get total number of challenges by counting levelN subdirectories
-async function getTotalChallenges() {
-  try {
-    const challengesDir = path.join(__dirname, 'challenges');
-    const entries = await fs.readdir(challengesDir, { withFileTypes: true });
-    return entries.filter(e => e.isDirectory() && /^level\d+$/.test(e.name)).length;
-  } catch (error) {
-    return 5; // Default fallback
-  }
+function getChallenge(id) {
+  return challengesById.get(id) || null;
 }
 
+function getTotalChallenges() {
+  return challengesById.size;
+}
+
+// Returns the next challenge id after `id`, or null if it's the last one
+function getNextId(id) {
+  const ids = [...challengesById.keys()];
+  const idx = ids.indexOf(id);
+  return idx !== -1 && idx < ids.length - 1 ? ids[idx + 1] : null;
+}
+
+// ---------------------------------------------------------------------------
 // User progress tracking
+// ---------------------------------------------------------------------------
 const userProgress = new Map();
 
-// Parse CyberChef deep link URL to extract recipe
+// ---------------------------------------------------------------------------
+// Recipe parsing helpers
+// ---------------------------------------------------------------------------
+
 function parseDeepLink(url) {
   try {
     console.log('Parsing deep link:', url);
-    
-    // Extract the hash part (everything after #)
+
     const hashIndex = url.indexOf('#');
-    if (hashIndex === -1) {
-      throw new Error('Invalid deep link: No # found in URL');
-    }
-    
-    const hashPart = url.substring(hashIndex + 1);
-    
-    // Parse URL parameters from hash
-    const params = new URLSearchParams(hashPart);
-    
-    // Get the recipe parameter
+    if (hashIndex === -1) throw new Error('No # found in URL');
+
+    const params = new URLSearchParams(url.substring(hashIndex + 1));
     let recipeString = params.get('recipe');
-    if (!recipeString) {
-      throw new Error('Invalid deep link: No recipe parameter found');
-    }
-    
+    if (!recipeString) throw new Error('No recipe parameter found');
+
     console.log('Raw recipe from URL:', recipeString);
-    
-    // URL decode the recipe
     recipeString = decodeURIComponent(recipeString);
     console.log('Decoded recipe:', recipeString);
-    
-    // Parse the recipe string which is in Chef format
-    // Example: To_Base64('A-Za-z0-9+/=')
+
     return parseChefFormat(recipeString);
-    
   } catch (error) {
     console.error('Deep link parsing error:', error.message);
     throw new Error(`Failed to parse deep link: ${error.message}`);
   }
 }
 
-// Parse Chef format string to JSON recipe
 function parseChefFormat(chefString) {
-  // Chef format example: XOR({'option':'Hex','string':'42'},'Standard',false)
-  // or: From_Base64('A-Za-z0-9+/=',true)
-  // We need to convert this to JSON format
-  
   const operations = [];
   const lines = chefString.trim().split('\n');
-  
+
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
-    
-    // Extract operation name and args
-    // Operation names can contain underscores: From_Base64, To_Base64, etc.
+
     const match = trimmed.match(/^([\w_]+)\((.*)\)$/);
-    if (!match) {
-      throw new Error(`Invalid Chef format: ${trimmed}`);
-    }
-    
-    let opName = match[1];
+    if (!match) throw new Error(`Invalid Chef format: ${trimmed}`);
+
+    let opName = match[1].replace(/_/g, ' ');
     const argsString = match[2];
-    
-    // Convert underscores to spaces in operation names
-    // Chef format: From_Base64 → CyberChef JSON: "From Base64"
-    opName = opName.replace(/_/g, ' ');
-    
-    // Parse args - this is tricky because it's JavaScript-like
     let args = [];
-    
+
     if (argsString.trim()) {
-      // Convert single quotes to double quotes for JSON parsing
       let jsonArgs = argsString
         .replace(/'/g, '"')
-        .replace(/(\w+):/g, '"$1":'); // Add quotes to keys
-      
-      // Parse the arguments
+        .replace(/(\w+):/g, '"$1":');
       try {
         args = JSON.parse(`[${jsonArgs}]`);
-      } catch (e) {
-        // If parsing fails, try simple comma split for primitive values
+      } catch {
         args = argsString.split(',').map(arg => {
           arg = arg.trim();
-          // Remove quotes
-          if ((arg.startsWith("'") && arg.endsWith("'")) || 
-              (arg.startsWith('"') && arg.endsWith('"'))) {
-            return arg.slice(1, -1);
-          }
-          // Try to parse as number or boolean
-          if (arg === 'true') return true;
+          if ((arg.startsWith("'") && arg.endsWith("'")) ||
+              (arg.startsWith('"') && arg.endsWith('"'))) return arg.slice(1, -1);
+          if (arg === 'true')  return true;
           if (arg === 'false') return false;
-          if (!isNaN(arg)) return Number(arg);
+          if (!isNaN(arg))     return Number(arg);
           return arg;
         });
       }
     }
-    
-    operations.push({
-      op: opName,
-      args: args
-    });
+
+    operations.push({ op: opName, args });
   }
-  
+
   return operations;
 }
 
-// Execute CyberChef recipe using the Node.js API
 async function executeCyberChefRecipe(inputData, recipe) {
   try {
     console.log(`Executing recipe with ${recipe.length} operations`);
     console.log(`Operations: ${recipe.map(r => r.op).join(' → ')}`);
-    
-    // Create a Dish (CyberChef's data container)
-    const dish = new chef.Dish(inputData, chef.Dish.ARRAY_BUFFER);
-    
-    // Bake the recipe
+
+    const dish   = new chef.Dish(inputData, chef.Dish.ARRAY_BUFFER);
     const result = await chef.bake(dish, recipe);
-    
-    // Get the result as ArrayBuffer (raw bytes) - works for both binary and text
     const output = await result.get(chef.Dish.ARRAY_BUFFER);
-    
-    // Convert ArrayBuffer to Buffer for Node.js operations
     const buffer = Buffer.from(output);
-    
+
     console.log(`Result: ${buffer.length} bytes (${buffer.slice(0, 64).toString('hex')}${buffer.length > 64 ? '...' : ''})`);
-    
     return buffer;
-    
   } catch (error) {
     console.error('CyberChef execution error:', error.message);
     throw error;
   }
 }
 
+// ---------------------------------------------------------------------------
+// API routes
+// ---------------------------------------------------------------------------
+
 // Initialize user session
 app.post('/api/init', (req, res) => {
-  const sessionId = crypto.randomUUID();
-  userProgress.set(sessionId, { currentLevel: 1, completedLevels: [] });
-  res.json({ sessionId, currentLevel: 1 });
+  const sessionId    = crypto.randomUUID();
+  const firstId      = [...challengesById.keys()][0] ?? 1;
+  userProgress.set(sessionId, { currentLevel: firstId, completedLevels: [] });
+  res.json({ sessionId, currentLevel: firstId });
 });
 
-// Get challenge info
+// Get challenge info by id
 app.get('/api/challenge/:level', async (req, res) => {
-  const level = parseInt(req.params.level);
+  const id        = parseInt(req.params.level);
   const sessionId = req.headers['x-session-id'];
-  
+
   if (!sessionId || !userProgress.has(sessionId)) {
     return res.status(401).json({ error: 'Invalid session' });
   }
-  
+
   const progress = userProgress.get(sessionId);
-  
-  if (level > progress.currentLevel) {
+  if (id > progress.currentLevel) {
     return res.status(403).json({ error: 'Level not unlocked yet' });
   }
-  
-  const challenge = await loadChallenge(level);
-  if (!challenge) {
-    return res.status(404).json({ error: 'Challenge not found' });
-  }
-  
-  // Build download URLs for all challenge files (served from per-challenge folder)
+
+  const challenge = getChallenge(id);
+  if (!challenge) return res.status(404).json({ error: 'Challenge not found' });
+
   const files = challenge.challengeFiles.map(f => ({
-    name: f.name,
-    url: `/challenges/level${level}/${f.file}`,
+    name:        f.name,
+    url:         `/challenges/${challenge.folderName}/${f.file}`,
     description: f.description || null
   }));
-  
-  res.json({
-    level,
-    name: challenge.name,
-    description: challenge.description,
-    hint: challenge.hint,
-    files: files
-  });
+
+  res.json({ level: id, name: challenge.name, description: challenge.description, hint: challenge.hint, files });
 });
 
-// Download challenge files from per-challenge folders
-app.get('/challenges/:level/:filename', async (req, res) => {
+// Download challenge files from per-challenge folder
+app.get('/challenges/:folder/:filename', async (req, res) => {
   try {
-    const level = req.params.level;
-    const filename = path.basename(req.params.filename); // prevent path traversal
-    const filepath = path.join(__dirname, 'challenges', level, filename);
+    const folder   = req.params.folder;
+    const filename = path.basename(req.params.filename); // prevent traversal
 
-    try {
-      await fs.access(filepath);
-    } catch (error) {
+    // Only allow known challenge folder names
+    const known = [...challengesById.values()].map(c => c.folderName);
+    if (!known.includes(folder)) {
+      return res.status(404).json({ error: 'Challenge not found' });
+    }
+
+    const filepath = path.join(CHALLENGES_DIR, folder, filename);
+    try { await fs.access(filepath); } catch {
       return res.status(404).json({ error: 'File not found' });
     }
 
-    res.download(filepath, (err) => {
-      if (err) {
-        console.error('Download error:', err);
-        if (!res.headersSent) {
-          res.status(500).json({ error: 'Download failed' });
-        }
-      }
+    res.download(filepath, err => {
+      if (err && !res.headersSent) res.status(500).json({ error: 'Download failed' });
     });
   } catch (error) {
     console.error('File download error:', error);
@@ -260,134 +223,94 @@ app.get('/challenges/:level/:filename', async (req, res) => {
 
 // Validate CyberChef recipe
 app.post('/api/validate/:level', async (req, res) => {
-  const level = parseInt(req.params.level);
+  const id        = parseInt(req.params.level);
   const sessionId = req.headers['x-session-id'];
-  
+
   if (!sessionId || !userProgress.has(sessionId)) {
     return res.status(401).json({ error: 'Invalid session' });
   }
-  
+
   const progress = userProgress.get(sessionId);
-  
-  if (level > progress.currentLevel) {
+  if (id > progress.currentLevel) {
     return res.status(403).json({ error: 'Level not unlocked yet' });
   }
-  
-  const challenge = await loadChallenge(level);
-  if (!challenge) {
-    return res.status(404).json({ error: 'Challenge not found' });
-  }
-  
+
+  const challenge = getChallenge(id);
+  if (!challenge) return res.status(404).json({ error: 'Challenge not found' });
+
   try {
     const { recipe, format } = req.body;
-    
-    if (!recipe) {
-      return res.status(400).json({ error: 'Recipe is required' });
-    }
-    
+    if (!recipe) return res.status(400).json({ error: 'Recipe is required' });
+
     console.log(`\n${'='.repeat(50)}`);
-    console.log(`Validating Level ${level}: ${challenge.name}`);
+    console.log(`Validating [${challenge.folderName}] ${challenge.name}`);
     console.log(`Recipe format: ${format || 'json'}`);
-    
-    // Parse recipe based on format
+
     let parsedRecipe;
     try {
-      if (format === 'deeplink') {
-        // Parse CyberChef deep link URL
-        parsedRecipe = parseDeepLink(recipe);
-        console.log('Parsed from deep link:', JSON.stringify(parsedRecipe, null, 2));
-      } else if (format === 'chef') {
-        // Parse Chef format: XOR({'option':'Hex','string':'42'},'Standard',false)
-        parsedRecipe = parseChefFormat(recipe);
-      } else {
-        // JSON formats (clean or compact)
-        parsedRecipe = typeof recipe === 'string' ? JSON.parse(recipe) : recipe;
-      }
-      
-      if (!Array.isArray(parsedRecipe)) {
-        throw new Error('Recipe must be an array of operations');
-      }
+      if (format === 'deeplink')      parsedRecipe = parseDeepLink(recipe);
+      else if (format === 'chef')     parsedRecipe = parseChefFormat(recipe);
+      else parsedRecipe = typeof recipe === 'string' ? JSON.parse(recipe) : recipe;
+
+      if (!Array.isArray(parsedRecipe)) throw new Error('Recipe must be an array of operations');
     } catch (parseError) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid recipe format',
-        error: parseError.message
-      });
+      return res.status(400).json({ success: false, message: 'Invalid recipe format', error: parseError.message });
     }
-    
-    // Read validation file from per-challenge folder
-    const validationPath = path.join(__dirname, 'challenges', `level${level}`, challenge.validationFile);
+
+    const validationPath = path.join(CHALLENGES_DIR, challenge.folderName, challenge.validationFile);
     const validationData = await fs.readFile(validationPath);
-    
+
     console.log(`Validation file: ${validationData.length} bytes, hex: ${validationData.slice(0, 32).toString('hex')}${validationData.length > 32 ? '...' : ''}`);
-    
-    // Execute user's recipe on validation data
-    const userResult = await executeCyberChefRecipe(validationData, parsedRecipe);
-    
-    // Execute solution recipe on validation data
+
+    const userResult     = await executeCyberChefRecipe(validationData, parsedRecipe);
     const expectedResult = await executeCyberChefRecipe(validationData, challenge.solutionRecipe);
-    
-    // Calculate hashes on raw bytes (works for both binary and text)
-    const userHash = crypto.createHash('sha256').update(userResult).digest('hex');
+
+    const userHash     = crypto.createHash('sha256').update(userResult).digest('hex');
     const expectedHash = crypto.createHash('sha256').update(expectedResult).digest('hex');
-    
-    console.log(`User result: ${userResult.length} bytes, SHA256: ${userHash}`);
+
+    console.log(`User result:     ${userResult.length} bytes, SHA256: ${userHash}`);
     console.log(`Expected result: ${expectedResult.length} bytes, SHA256: ${expectedHash}`);
     console.log(`Match: ${userHash === expectedHash ? '✓ YES' : '✗ NO'}`);
     console.log('='.repeat(50) + '\n');
-    
-    // Validate hash
+
     if (userHash === expectedHash) {
-      // Update progress
-      if (!progress.completedLevels.includes(level)) {
-        progress.completedLevels.push(level);
-        const totalChallenges = await getTotalChallenges();
-        progress.currentLevel = Math.min(level + 1, totalChallenges + 1);
+      if (!progress.completedLevels.includes(id)) {
+        progress.completedLevels.push(id);
+        const nextId = getNextId(id);
+        progress.currentLevel = nextId ?? id;
       }
-      
-      const totalChallenges = await getTotalChallenges();
-      const isLastLevel = level === totalChallenges;
-      
+
+      const nextId      = getNextId(id);
+      const isLastLevel = nextId === null;
+
       return res.json({
-        success: true,
-        message: 'Correct! Challenge solved!',
-        flag: challenge.flag,
-        nextLevel: isLastLevel ? null : progress.currentLevel,
+        success:    true,
+        message:    'Correct! Challenge solved!',
+        flag:       challenge.flag,
+        nextLevel:  isLastLevel ? null : progress.currentLevel,
         isComplete: isLastLevel
       });
-    } else {
-      return res.json({
-        success: false,
-        message: 'Incorrect decryption. The result does not match the expected output.',
-        hint: 'Review your recipe operations and parameters. Try testing in CyberChef first.'
-      });
     }
-    
+
+    return res.json({
+      success: false,
+      message: 'Incorrect decryption. The result does not match the expected output.',
+      hint:    'Review your recipe operations and parameters. Try testing in CyberChef first.'
+    });
+
   } catch (error) {
     console.error('Validation error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Validation error',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: 'Validation error', error: error.message });
   }
 });
 
 // Get user progress
-app.get('/api/progress', async (req, res) => {
+app.get('/api/progress', (req, res) => {
   const sessionId = req.headers['x-session-id'];
-  
   if (!sessionId || !userProgress.has(sessionId)) {
     return res.status(401).json({ error: 'Invalid session' });
   }
-  
-  const progress = userProgress.get(sessionId);
-  const totalChallenges = await getTotalChallenges();
-  
-  res.json({
-    ...progress,
-    totalChallenges
-  });
+  res.json({ ...userProgress.get(sessionId), totalChallenges: getTotalChallenges() });
 });
 
 // Serve frontend
@@ -395,32 +318,37 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// ---------------------------------------------------------------------------
+// Startup
+// ---------------------------------------------------------------------------
 const PORT = process.env.PORT || 3000;
 
-// Check challenges directory exists — if not, guide the user to run sync
-const challengesDir = path.join(__dirname, 'challenges');
+console.log('\n' + '='.repeat(60));
+console.log('CyberChef Playground - Node.js API Mode');
+console.log('='.repeat(60));
+console.log('\n✓ Using cyberchef-node v2.0.3 (Node.js compatible)');
+console.log('✓ ALL 300+ operations supported!');
+console.log('✓ Deep link support enabled!');
+console.log(`  Challenges dir: ${CHALLENGES_DIR}\n`);
+
 try {
-  const entries = await fs.readdir(challengesDir, { withFileTypes: true });
-  const levels = entries.filter(e => e.isDirectory() && /^level\d+$/.test(e.name));
-  if (levels.length === 0) {
-    throw new Error('No challenge folders found');
+  await loadAllChallenges();
+
+  if (challengesById.size === 0) throw new Error('No challenges found');
+
+  console.log(`✓ ${challengesById.size} challenge(s) loaded:`);
+  for (const [id, ch] of challengesById) {
+    console.log(`  [${id}] ${ch.folderName} — ${ch.name}`);
   }
-  console.log('\n' + '='.repeat(60));
-  console.log('CyberChef Playground - Node.js API Mode');
-  console.log('='.repeat(60));
-  console.log('\n✓ Using cyberchef-node v2.0.3 (Node.js compatible)');
-  console.log('✓ ALL 300+ operations supported!');
-  console.log('✓ Deep link support enabled!');
-  console.log(`✓ ${levels.length} challenge(s) loaded from CCPG-Challenges\n`);
+  console.log();
+
 } catch {
-  console.error('\n' + '='.repeat(60));
-  console.error('✗ Challenges not found!');
-  console.error('='.repeat(60));
-  console.error('\nThe challenges directory is empty or missing.');
-  console.error('Run the following command to sync challenges from CCPG-Challenges:\n');
-  console.error('  npm run sync\n');
-  console.error('Or clone manually:');
-  console.error('  git clone https://github.com/ChickenLoner/CCPG-Challenges.git challenges\n');
+  console.error('✗ Failed to load challenges!');
+  console.error(`  Directory: ${CHALLENGES_DIR}`);
+  console.error('\n  Run the following to sync challenges from CCPG-Challenges:\n');
+  console.error('    npm run sync\n');
+  console.error('  Or clone manually:');
+  console.error('    git clone https://github.com/ChickenLoner/CCPG-Challenges.git .ccpg-challenges\n');
   console.error('='.repeat(60) + '\n');
   process.exit(1);
 }

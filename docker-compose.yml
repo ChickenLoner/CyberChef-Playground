@@ -15,12 +15,13 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
-    
+      - CHALLENGES_DIR=/app/challenges
+
     volumes:
       # Override the challenges baked into the image with a locally-synced copy.
-      # Run `npm run sync` first to populate ./challenges, then rebuild.
+      # Run `npm run sync` first, then docker-compose up (no rebuild needed).
       # Remove this mount to use the challenges cloned at image build time.
-      - ./challenges:/app/challenges:ro
+      - ./.ccpg-challenges/challenges:/app/challenges:ro
     
     # Resource limits (adjust based on your needs)
     deploy:
