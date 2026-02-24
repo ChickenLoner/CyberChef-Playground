@@ -229,13 +229,8 @@ Challenges live in [CCPG-Challenges](https://github.com/ChickenLoner/CCPG-Challe
 ---
 
 ## 📚 References
-
-- [CTF_AUTHOR_GUIDE.md](CTF_AUTHOR_GUIDE.md) — how to create and publish challenges
-- [CCPG-Challenges](https://github.com/ChickenLoner/CCPG-Challenges) — the challenge content repo
-- [CyberChef](https://github.com/gchq/CyberChef) — the underlying tool
-- [cyberchef-node](https://github.com/gchq/CyberChef-server) — Node.js API
-
----
+- [CyberChef Documentation](https://github.com/gchq/CyberChef/wiki) - Learn CyberChef operations
+- [cyberchef-node](https://github.com/gchq/CyberChef-server) - Node.js API docs
 
 ## 🤝 Contributing
 
@@ -250,7 +245,9 @@ Built for educational and training purposes. CyberChef is developed by GCHQ.
 
 ---
 
-**Ready to play?**
-- 🐳 Docker: `docker-compose up --build -d`
-- 📦 npm: `npm run sync && npm start`
-- 🌐 http://localhost:3000
+**Ready to play?** 
+- 🐳 Docker: `docker-compose up -d`
+- 📦 npm: `npm start`
+- 🌐 Access: http://localhost:3000
+
+**Need help?** Check the guides above or open an issue! 🆘
