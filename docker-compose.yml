@@ -17,7 +17,9 @@ services:
       - PORT=3000
     
     volumes:
-      # Mount challenges directory (each challenge in its own subfolder)
+      # Override the challenges baked into the image with a locally-synced copy.
+      # Run `npm run sync` first to populate ./challenges, then rebuild.
+      # Remove this mount to use the challenges cloned at image build time.
       - ./challenges:/app/challenges:ro
     
     # Resource limits (adjust based on your needs)
