@@ -17,10 +17,9 @@ services:
       - PORT=3000
       - CHALLENGES_DIR=/app/challenges
 
-    # volumes:
-      # Uncomment to override the challenges baked into the image with a
-      # locally-synced copy (run `npm run sync` first, no rebuild needed).
-      # - ./.ccpg-challenges/challenges:/app/challenges:ro
+    volumes:
+      # Mount local CCPG-Challenges repo directly — no rebuild needed when challenge files change.
+      - G:/CCPG-Challenges/challenges:/app/challenges:ro
     
     # Resource limits (adjust based on your needs)
     deploy:

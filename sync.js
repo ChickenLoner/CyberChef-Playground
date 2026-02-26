@@ -16,12 +16,28 @@
 import { execSync }          from 'child_process';
 import { existsSync }        from 'fs';
 import { readdirSync }       from 'fs';
+import { readFileSync }      from 'fs';
 import { fileURLToPath }     from 'url';
 import path                  from 'path';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const CHALLENGES_REPO  = 'https://github.com/ChickenLoner/CCPG-Challenges.git';
+// Read ccpg.config.json — respect autoPullChallenges setting
+let syncConfig = { autoPullChallenges: true };
+try {
+  syncConfig = JSON.parse(readFileSync(path.join(__dirname, 'ccpg.config.json'), 'utf8'));
+} catch {}
+
+if (syncConfig.autoPullChallenges === false) {
+  console.log('\n' + '='.repeat(60));
+  console.log('CCPG Sync — CyberChef Playground Challenge Sync');
+  console.log('='.repeat(60));
+  console.log('⏭  autoPullChallenges is disabled in ccpg.config.json — skipping sync.');
+  console.log('   Manage challenges manually via CHALLENGES_DIR or local folder.\n');
+  process.exit(0);
+}
+
+const CHALLENGES_REPO  = syncConfig.challengesRepo || 'https://github.com/ChickenLoner/CCPG-Challenges.git';
 const SYNC_DIR         = path.join(__dirname, '.ccpg-challenges');
 const CHALLENGES_SUBDIR = path.join(SYNC_DIR, 'challenges');
 

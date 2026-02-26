@@ -46,6 +46,7 @@ COPY --from=base /app/node_modules ./node_modules
 # Copy application files
 COPY --chown=nodejs:nodejs server.js ./
 COPY --chown=nodejs:nodejs sync.js ./
+COPY --chown=nodejs:nodejs ccpg.config.json ./
 COPY --chown=nodejs:nodejs public ./public
 
 # Copy only the challenges/ subfolder from the cloned CCPG-Challenges repo

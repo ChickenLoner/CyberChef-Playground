@@ -8,6 +8,18 @@ import chef from 'cyberchef-node';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// ---------------------------------------------------------------------------
+// Load ccpg.config.json — controls mode and sync behaviour.
+// ---------------------------------------------------------------------------
+const CONFIG_PATH = path.join(__dirname, 'ccpg.config.json');
+let appConfig = { mode: 'linear', autoPullChallenges: true };
+try {
+  appConfig = JSON.parse(await fs.readFile(CONFIG_PATH, 'utf8'));
+} catch {
+  console.warn('⚠  No ccpg.config.json found, defaulting to linear mode.');
+}
+const MODE = appConfig.mode === 'jeopardy' ? 'jeopardy' : 'linear';
+
 // Challenges are stored in a separate repo (CCPG-Challenges).
 // Locally: run `npm run sync` → clones into .ccpg-challenges/challenges/
 // Docker:  baked in at build time, overridden via CHALLENGES_DIR env var.
@@ -161,8 +173,30 @@ async function executeCyberChefRecipe(inputData, recipe) {
 // API routes
 // ---------------------------------------------------------------------------
 
+// Return active config (mode only — never expose secrets)
+app.get('/api/config', (_req, res) => {
+  res.json({ mode: MODE });
+});
+
+// List all challenges (used by jeopardy board; also works in linear mode)
+app.get('/api/challenges', (req, res) => {
+  const sessionId = req.headers['x-session-id'];
+  if (!sessionId || !userProgress.has(sessionId)) {
+    return res.status(401).json({ error: 'Invalid session' });
+  }
+  const progress = userProgress.get(sessionId);
+  const challenges = [...challengesById.values()].map(ch => ({
+    id:          ch.id,
+    name:        ch.name,
+    description: ch.description || '',
+    category:    ch.category || 'General',
+    completed:   progress.completedLevels.includes(ch.id)
+  }));
+  res.json({ challenges });
+});
+
 // Initialize user session
-app.post('/api/init', (req, res) => {
+app.post('/api/init', (_req, res) => {
   const sessionId    = crypto.randomUUID();
   const firstId      = [...challengesById.keys()][0] ?? 1;
   userProgress.set(sessionId, { currentLevel: firstId, completedLevels: [] });
@@ -179,7 +213,7 @@ app.get('/api/challenge/:level', async (req, res) => {
   }
 
   const progress = userProgress.get(sessionId);
-  if (id > progress.currentLevel) {
+  if (MODE === 'linear' && id > progress.currentLevel) {
     return res.status(403).json({ error: 'Level not unlocked yet' });
   }
 
@@ -192,7 +226,7 @@ app.get('/api/challenge/:level', async (req, res) => {
     description: f.description || null
   }));
 
-  res.json({ level: id, name: challenge.name, description: challenge.description, hint: challenge.hint, files });
+  res.json({ level: id, name: challenge.name, category: challenge.category || 'General', description: challenge.description, hint: challenge.hint, files });
 });
 
 // Download challenge files from per-challenge folder
@@ -231,7 +265,7 @@ app.post('/api/validate/:level', async (req, res) => {
   }
 
   const progress = userProgress.get(sessionId);
-  if (id > progress.currentLevel) {
+  if (MODE === 'linear' && id > progress.currentLevel) {
     return res.status(403).json({ error: 'Level not unlocked yet' });
   }
 
@@ -276,18 +310,20 @@ app.post('/api/validate/:level', async (req, res) => {
     if (userHash === expectedHash) {
       if (!progress.completedLevels.includes(id)) {
         progress.completedLevels.push(id);
-        const nextId = getNextId(id);
-        progress.currentLevel = nextId ?? id;
+        if (MODE === 'linear') {
+          const nextId = getNextId(id);
+          progress.currentLevel = nextId ?? id;
+        }
       }
 
-      const nextId      = getNextId(id);
-      const isLastLevel = nextId === null;
+      const nextId      = MODE === 'linear' ? getNextId(id) : null;
+      const isLastLevel = MODE === 'linear' && nextId === null;
 
       return res.json({
         success:    true,
         message:    'Correct! Challenge solved!',
         flag:       challenge.flag,
-        nextLevel:  isLastLevel ? null : progress.currentLevel,
+        nextLevel:  nextId !== null ? progress.currentLevel : null,
         isComplete: isLastLevel
       });
     }
@@ -314,7 +350,7 @@ app.get('/api/progress', (req, res) => {
 });
 
 // Serve frontend
-app.get('/', (req, res) => {
+app.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
@@ -340,6 +376,7 @@ try {
   for (const [id, ch] of challengesById) {
     console.log(`  [${id}] ${ch.folderName} — ${ch.name}`);
   }
+  console.log(`✓ Mode: ${MODE}`);
   console.log();
 
 } catch {

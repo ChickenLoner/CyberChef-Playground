@@ -1,0 +1,5 @@
+{
+  "mode": "jeopardy",
+  "autoPullChallenges": true,
+  "challengesRepo": "https://github.com/ChickenLoner/CCPG-Challenges"
+}
