@@ -666,6 +666,17 @@
         }
         #sidebar-backdrop.show { display: block; }
 
+        /* ── Challenge transition flash ──────────────────────── */
+        @keyframes ch-flash {
+            0%   { border-color: var(--green); box-shadow: 0 0 0 0 rgba(0,255,65,0.6); }
+            50%  { border-color: var(--green); box-shadow: 0 0 0 6px rgba(0,255,65,0); }
+            100% { border-color: var(--green-border); box-shadow: none; }
+        }
+
+        #challenge-info.flash {
+            animation: ch-flash 0.55s ease-out forwards;
+        }
+
         /* ── Responsive ───────────────────────────────────────── */
         @media (max-width: 680px) {
             #jeopardy-sidebar { display: none !important; }
@@ -985,7 +996,18 @@
     async function loadChallenge(level) {
         try {
             const ci = document.getElementById('challenge-info');
-            ci.style.opacity = '0.5';
+
+            // Clear stale result / recipe before fetching new challenge
+            document.getElementById('result').style.display    = 'none';
+            document.getElementById('recipe-input').value      = '';
+            document.getElementById('loading').style.display   = 'none';
+            document.getElementById('submit-recipe').disabled  = false;
+
+            // Scroll to top so the new challenge header is immediately visible
+            document.getElementById('main-panel').scrollTo({ top: 0, behavior: 'smooth' });
+
+            ci.classList.remove('flash');
+            ci.style.opacity = '0.45';
 
             const res = await fetch(`/api/challenge/${level}`, {
                 headers: { 'X-Session-ID': sessionId }
@@ -1053,6 +1075,11 @@
 
             currentLevel     = level;
             ci.style.opacity = '1';
+
+            // Trigger border-glow flash so it's obvious a new challenge loaded
+            void ci.offsetWidth; // force reflow to restart animation
+            ci.classList.add('flash');
+
         } catch (err) {
             console.error('loadChallenge:', err);
             const ci = document.getElementById('challenge-info');
