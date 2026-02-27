@@ -83,7 +83,21 @@ function getNextId(id) {
 // ---------------------------------------------------------------------------
 // User progress tracking
 // ---------------------------------------------------------------------------
-const userProgress = new Map();
+const userProgress  = new Map(); // sessionId → { currentLevel, completedLevels, lastSeen }
+const SESSION_TTL   = 2 * 60 * 60 * 1000; // 2 hours in ms
+
+// Evict sessions idle for longer than SESSION_TTL
+setInterval(() => {
+  const cutoff = Date.now() - SESSION_TTL;
+  for (const [id, s] of userProgress) {
+    if (s.lastSeen < cutoff) userProgress.delete(id);
+  }
+}, 30 * 60 * 1000); // run every 30 minutes
+
+function touchSession(sessionId) {
+  const s = userProgress.get(sessionId);
+  if (s) s.lastSeen = Date.now();
+}
 
 // ---------------------------------------------------------------------------
 // Recipe parsing helpers
@@ -91,8 +105,6 @@ const userProgress = new Map();
 
 function parseDeepLink(url) {
   try {
-    console.log('Parsing deep link:', url);
-
     const hashIndex = url.indexOf('#');
     if (hashIndex === -1) throw new Error('No # found in URL');
 
@@ -100,13 +112,9 @@ function parseDeepLink(url) {
     let recipeString = params.get('recipe');
     if (!recipeString) throw new Error('No recipe parameter found');
 
-    console.log('Raw recipe from URL:', recipeString);
     recipeString = decodeURIComponent(recipeString);
-    console.log('Decoded recipe:', recipeString);
-
     return parseChefFormat(recipeString);
   } catch (error) {
-    console.error('Deep link parsing error:', error.message);
     throw new Error(`Failed to parse deep link: ${error.message}`);
   }
 }
@@ -153,16 +161,10 @@ function parseChefFormat(chefString) {
 
 async function executeCyberChefRecipe(inputData, recipe) {
   try {
-    console.log(`Executing recipe with ${recipe.length} operations`);
-    console.log(`Operations: ${recipe.map(r => r.op).join(' → ')}`);
-
     const dish   = new chef.Dish(inputData, chef.Dish.ARRAY_BUFFER);
     const result = await chef.bake(dish, recipe);
     const output = await result.get(chef.Dish.ARRAY_BUFFER);
-    const buffer = Buffer.from(output);
-
-    console.log(`Result: ${buffer.length} bytes (${buffer.slice(0, 64).toString('hex')}${buffer.length > 64 ? '...' : ''})`);
-    return buffer;
+    return Buffer.from(output);
   } catch (error) {
     console.error('CyberChef execution error:', error.message);
     throw error;
@@ -184,6 +186,7 @@ app.get('/api/challenges', (req, res) => {
   if (!sessionId || !userProgress.has(sessionId)) {
     return res.status(401).json({ error: 'Invalid session' });
   }
+  touchSession(sessionId);
   const progress = userProgress.get(sessionId);
   const challenges = [...challengesById.values()].map(ch => ({
     id:          ch.id,
@@ -199,18 +202,21 @@ app.get('/api/challenges', (req, res) => {
 app.post('/api/init', (_req, res) => {
   const sessionId    = crypto.randomUUID();
   const firstId      = [...challengesById.keys()][0] ?? 1;
-  userProgress.set(sessionId, { currentLevel: firstId, completedLevels: [] });
+  userProgress.set(sessionId, { currentLevel: firstId, completedLevels: [], lastSeen: Date.now() });
   res.json({ sessionId, currentLevel: firstId });
 });
 
 // Get challenge info by id
 app.get('/api/challenge/:level', async (req, res) => {
-  const id        = parseInt(req.params.level);
+  const id        = parseInt(req.params.level, 10);
   const sessionId = req.headers['x-session-id'];
+
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid level ID' });
 
   if (!sessionId || !userProgress.has(sessionId)) {
     return res.status(401).json({ error: 'Invalid session' });
   }
+  touchSession(sessionId);
 
   const progress = userProgress.get(sessionId);
   if (MODE === 'linear' && id > progress.currentLevel) {
@@ -220,7 +226,7 @@ app.get('/api/challenge/:level', async (req, res) => {
   const challenge = getChallenge(id);
   if (!challenge) return res.status(404).json({ error: 'Challenge not found' });
 
-  const files = challenge.challengeFiles.map(f => ({
+  const files = (challenge.challengeFiles || []).map(f => ({
     name:        f.name,
     url:         `/challenges/${challenge.folderName}/${f.file}`,
     description: f.description || null
@@ -257,12 +263,15 @@ app.get('/challenges/:folder/:filename', async (req, res) => {
 
 // Validate CyberChef recipe
 app.post('/api/validate/:level', async (req, res) => {
-  const id        = parseInt(req.params.level);
+  const id        = parseInt(req.params.level, 10);
   const sessionId = req.headers['x-session-id'];
+
+  if (isNaN(id)) return res.status(400).json({ error: 'Invalid level ID' });
 
   if (!sessionId || !userProgress.has(sessionId)) {
     return res.status(401).json({ error: 'Invalid session' });
   }
+  touchSession(sessionId);
 
   const progress = userProgress.get(sessionId);
   if (MODE === 'linear' && id > progress.currentLevel) {
@@ -276,9 +285,7 @@ app.post('/api/validate/:level', async (req, res) => {
     const { recipe, format } = req.body;
     if (!recipe) return res.status(400).json({ error: 'Recipe is required' });
 
-    console.log(`\n${'='.repeat(50)}`);
-    console.log(`Validating [${challenge.folderName}] ${challenge.name}`);
-    console.log(`Recipe format: ${format || 'json'}`);
+    console.log(`Validating [${challenge.folderName}] format=${format || 'json'}`);
 
     let parsedRecipe;
     try {
@@ -291,21 +298,14 @@ app.post('/api/validate/:level', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid recipe format', error: parseError.message });
     }
 
-    const validationPath = path.join(CHALLENGES_DIR, challenge.folderName, challenge.validationFile);
+    const validationPath = path.join(CHALLENGES_DIR, challenge.folderName, path.basename(challenge.validationFile));
     const validationData = await fs.readFile(validationPath);
-
-    console.log(`Validation file: ${validationData.length} bytes, hex: ${validationData.slice(0, 32).toString('hex')}${validationData.length > 32 ? '...' : ''}`);
 
     const userResult     = await executeCyberChefRecipe(validationData, parsedRecipe);
     const expectedResult = await executeCyberChefRecipe(validationData, challenge.solutionRecipe);
 
     const userHash     = crypto.createHash('sha256').update(userResult).digest('hex');
     const expectedHash = crypto.createHash('sha256').update(expectedResult).digest('hex');
-
-    console.log(`User result:     ${userResult.length} bytes, SHA256: ${userHash}`);
-    console.log(`Expected result: ${expectedResult.length} bytes, SHA256: ${expectedHash}`);
-    console.log(`Match: ${userHash === expectedHash ? '✓ YES' : '✗ NO'}`);
-    console.log('='.repeat(50) + '\n');
 
     if (userHash === expectedHash) {
       if (!progress.completedLevels.includes(id)) {
@@ -346,7 +346,9 @@ app.get('/api/progress', (req, res) => {
   if (!sessionId || !userProgress.has(sessionId)) {
     return res.status(401).json({ error: 'Invalid session' });
   }
-  res.json({ ...userProgress.get(sessionId), totalChallenges: getTotalChallenges() });
+  touchSession(sessionId);
+  const { currentLevel, completedLevels } = userProgress.get(sessionId);
+  res.json({ currentLevel, completedLevels, totalChallenges: getTotalChallenges() });
 });
 
 // Serve frontend

@@ -756,9 +756,11 @@
     // ── Jeopardy sidebar ──────────────────────────────────────────────────────
     async function loadJeopardyPanel() {
         try {
-            const data = await fetch('/api/challenges', {
+            const resp = await fetch('/api/challenges', {
                 headers: { 'X-Session-ID': sessionId }
-            }).then(r => r.json());
+            });
+            if (!resp.ok) { showToast('Failed to load challenges', 'error'); return; }
+            const data = await resp.json();
 
             if (data.error) { showToast('Failed to load challenges', 'error'); return; }
 
@@ -794,10 +796,16 @@
                     item.dataset.id = ch.id;
 
                     const icon = ch.completed ? '✓' : isActive ? '▶' : '○';
-                    item.innerHTML = `
-                        <span class="ch-icon">${icon}</span>
-                        <span class="ch-num">#${ch.id}</span>
-                        <span class="ch-name">${ch.name}</span>`;
+                    const iconSpan = document.createElement('span');
+                    iconSpan.className   = 'ch-icon';
+                    iconSpan.textContent = icon;
+                    const numSpan = document.createElement('span');
+                    numSpan.className   = 'ch-num';
+                    numSpan.textContent = `#${ch.id}`;
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className   = 'ch-name';
+                    nameSpan.textContent = ch.name;
+                    item.append(iconSpan, numSpan, nameSpan);
 
                     item.addEventListener('click', () => selectChallenge(ch.id));
                     list.appendChild(item);
@@ -881,7 +889,7 @@
                 if (file.name.toLowerCase().includes('pcap'))   icon = '🌐';
                 if (file.name.toLowerCase().includes('zip'))    icon = '📁';
                 if (file.name.toLowerCase().includes('binary')) icon = '⚙️';
-                a.innerHTML = `${icon} ${file.name}`;
+                a.textContent = `${icon} ${file.name}`;
                 dc.appendChild(a);
             });
 
@@ -900,9 +908,11 @@
     // ── Update progress ───────────────────────────────────────────────────────
     async function updateProgress() {
         try {
-            const progress = await fetch('/api/progress', {
+            const resp = await fetch('/api/progress', {
                 headers: { 'X-Session-ID': sessionId }
-            }).then(r => r.json());
+            });
+            if (!resp.ok) return;
+            const progress = await resp.json();
 
             const total     = progress.totalChallenges || 0;
             const completed = progress.completedLevels.length;
@@ -949,23 +959,24 @@
             if (result.success) {
                 rd.className = 'result success';
 
-                let actionHtml;
+                const h2 = document.createElement('h2');
+                h2.innerHTML = '&#9989; Challenge Solved!';
+                const flagBox = document.createElement('div');
+                flagBox.className   = 'flag-box';
+                flagBox.textContent = result.flag;
+                const actions = document.createElement('div');
                 if (appMode === 'jeopardy') {
-                    actionHtml = `<div class="result-actions">
+                    actions.innerHTML = `<div class="result-actions">
                         <button class="btn btn-outline" onclick="backToBoard()">&#8617; Back to Board</button>
                     </div>`;
                 } else if (result.nextLevel) {
-                    actionHtml = `<div class="result-actions">
+                    actions.innerHTML = `<div class="result-actions">
                         <button class="btn" onclick="loadChallenge(${result.nextLevel})">Next Challenge &rarr;</button>
                     </div>`;
                 } else {
-                    actionHtml = `<p style="margin-top:12px;font-size:1em;">All challenges complete! Well done.</p>`;
+                    actions.innerHTML = `<p style="margin-top:12px;font-size:1em;">All challenges complete! Well done.</p>`;
                 }
-
-                rd.innerHTML = `
-                    <h2>&#9989; Challenge Solved!</h2>
-                    <div class="flag-box">${result.flag}</div>
-                    ${actionHtml}`;
+                rd.replaceChildren(h2, flagBox, actions);
 
                 updateProgress();
                 if (appMode === 'jeopardy') loadJeopardyPanel();
@@ -974,10 +985,23 @@
 
             } else {
                 rd.className = 'result error';
-                rd.innerHTML = `
-                    <h2>&#10060; Incorrect</h2>
-                    ${result.hint  ? `<p><strong>Hint:</strong> ${result.hint}</p>`   : ''}
-                    ${result.error ? `<p><strong>Error:</strong> ${result.error}</p>` : ''}`;
+                const h2 = document.createElement('h2');
+                h2.innerHTML = '&#10060; Incorrect';
+                rd.replaceChildren(h2);
+                if (result.hint) {
+                    const p = document.createElement('p');
+                    const strong = document.createElement('strong');
+                    strong.textContent = 'Hint: ';
+                    p.append(strong, document.createTextNode(result.hint));
+                    rd.appendChild(p);
+                }
+                if (result.error) {
+                    const p = document.createElement('p');
+                    const strong = document.createElement('strong');
+                    strong.textContent = 'Error: ';
+                    p.append(strong, document.createTextNode(result.error));
+                    rd.appendChild(p);
+                }
                 showToast('Incorrect solution', 'error');
             }
 
@@ -987,7 +1011,11 @@
             const rd = document.getElementById('result');
             rd.style.display = 'block';
             rd.className     = 'result error';
-            rd.innerHTML     = `<h2>&#10060; Error</h2><p>Failed to validate. ${err.message}</p>`;
+            const h2 = document.createElement('h2');
+            h2.innerHTML = '&#10060; Error';
+            const p = document.createElement('p');
+            p.textContent = `Failed to validate. ${err.message}`;
+            rd.replaceChildren(h2, p);
             showToast('Validation error', 'error');
         }
     });
