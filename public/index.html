@@ -523,14 +523,17 @@
         .flag-box {
             background: #000;
             border: 1px solid var(--yellow);
-            padding: 13px;
+            padding: 12px 16px;
             margin: 10px 0 14px;
             font-size: 1.05em;
-            text-align: center;
             color: var(--yellow);
             font-weight: bold;
             letter-spacing: 1px;
             border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
         }
 
         .result-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
@@ -579,11 +582,112 @@
         .toast.show { opacity: 1; transform: translateY(0); }
         .toast.error { border-color: rgba(255,68,68,0.45); color: #ff8080; }
 
+        /* ── Disabled / focus states ──────────────────────────── */
+        .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+        .btn:focus-visible, .format-select:focus-visible {
+            outline: 2px solid var(--green);
+            outline-offset: 2px;
+        }
+
+        /* ── Copy-flag button ──────────────────────────────────── */
+        .flag-copy-btn {
+            flex-shrink: 0;
+            background: transparent;
+            border: 1px solid rgba(240,224,64,0.4);
+            color: rgba(240,224,64,0.7);
+            padding: 3px 10px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.72em;
+            cursor: pointer;
+            transition: all 0.18s;
+        }
+        .flag-copy-btn:hover {
+            background: rgba(240,224,64,0.1);
+            border-color: var(--yellow);
+            color: var(--yellow);
+        }
+
+        /* ── Solved stamp on challenge card ───────────────────── */
+        .solved-stamp {
+            font-size: 0.62em;
+            font-weight: bold;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: rgba(0,200,70,0.9);
+            border: 1px solid rgba(0,200,70,0.4);
+            padding: 2px 8px;
+            border-radius: 3px;
+        }
+
+        /* ── Back-to-board button (jeopardy inline) ───────────── */
+        #back-to-board-btn {
+            display: none;
+            margin-left: auto;
+            background: transparent;
+            border: 1px solid var(--green-border);
+            color: var(--text-dim);
+            padding: 3px 11px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.72em;
+            cursor: pointer;
+            transition: all 0.18s;
+        }
+        #back-to-board-btn:hover {
+            background: var(--green-faint);
+            color: var(--green);
+            border-color: var(--green);
+        }
+
+        /* ── Mobile sidebar toggle ────────────────────────────── */
+        #sidebar-toggle {
+            display: none;
+            align-items: center;
+            gap: 5px;
+            background: transparent;
+            border: 1px solid var(--green-border);
+            color: var(--green);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.78em;
+            cursor: pointer;
+            transition: all 0.18s;
+        }
+        #sidebar-toggle:hover { background: var(--green-faint); border-color: var(--green); }
+
+        #sidebar-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 199;
+            background: rgba(0,0,0,0.55);
+        }
+        #sidebar-backdrop.show { display: block; }
+
         /* ── Responsive ───────────────────────────────────────── */
         @media (max-width: 680px) {
             #jeopardy-sidebar { display: none !important; }
             #main-panel { padding: 14px; }
             #top-bar { padding: 10px 16px; }
+
+            body.jeopardy-mode #sidebar-toggle { display: flex; }
+
+            #jeopardy-sidebar.mobile-open {
+                display: flex !important;
+                position: fixed;
+                left: 0; top: 0; bottom: 0;
+                z-index: 200;
+                box-shadow: 4px 0 30px rgba(0,0,0,0.85);
+            }
+
+            .downloads { flex-direction: column; }
+            .downloads a { width: 100%; box-sizing: border-box; text-align: center; }
+
+            .toast { top: auto; bottom: 16px; right: 10px; left: 10px; max-width: none; }
+
+            .btn { padding: 11px 18px; }
         }
     </style>
 </head>
@@ -595,13 +699,17 @@
         <div class="brand-title">[ CYBERCHEF PLAYGROUND ]</div>
         <div class="brand-sub">REVERSE. DECRYPT. CONQUER.</div>
     </div>
-    <div id="top-progress">
-        <span id="top-bar-label">0/0</span>
-        <div class="top-bar-wrap">
-            <div id="top-bar-fill" style="width:0%"></div>
+    <div style="display:flex;align-items:center;gap:14px;">
+        <button id="sidebar-toggle" aria-label="Toggle challenge board">&#9776; Board</button>
+        <div id="top-progress">
+            <span id="top-bar-label">0/0</span>
+            <div class="top-bar-wrap">
+                <div id="top-bar-fill" style="width:0%" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+            </div>
         </div>
     </div>
 </div>
+<div id="sidebar-backdrop"></div>
 
 <!-- Content area -->
 <div id="content-area">
@@ -650,6 +758,7 @@
             <div class="ch-meta">
                 <span class="level-badge" id="level-badge">Level 1</span>
                 <span class="cat-badge" id="cat-badge" style="display:none"></span>
+                <button id="back-to-board-btn" onclick="backToBoard()" aria-label="Back to challenge board">&#8617; Board</button>
             </div>
             <h2 id="challenge-name">Loading...</h2>
             <p class="ch-desc" id="challenge-description"></p>
@@ -666,8 +775,8 @@
             <p class="upload-sub">Paste your CyberChef URL or exported recipe below</p>
 
             <div class="format-selector">
-                <label>Format:</label>
-                <select id="recipe-format" class="format-select">
+                <label for="recipe-format">Format:</label>
+                <select id="recipe-format" class="format-select" aria-label="Recipe format">
                     <option value="deeplink">Deep Link (URL)</option>
                     <option value="json">Clean JSON</option>
                     <option value="compact">Compact JSON</option>
@@ -675,12 +784,13 @@
                 </select>
             </div>
 
-            <div id="format-help" class="format-help"></div>
+            <div id="format-help" class="format-help" aria-live="polite"></div>
 
             <textarea id="recipe-input" class="recipe-textarea"
-                placeholder="Paste your CyberChef URL or recipe here..."></textarea>
+                placeholder="Paste your CyberChef URL or recipe here… (Ctrl+Enter to submit)"
+                aria-label="CyberChef recipe input"></textarea>
 
-            <button class="btn" id="submit-recipe">Submit Recipe</button>
+            <button class="btn" id="submit-recipe" aria-label="Submit recipe for validation">Submit Recipe</button>
 
             <div id="loading">
                 <div class="spinner"></div>
@@ -695,9 +805,10 @@
 </div><!-- /content-area -->
 
 <script>
-    let sessionId    = null;
-    let currentLevel = 1;
-    let appMode      = 'linear';
+    let sessionId       = null;
+    let currentLevel    = 1;
+    let appMode         = 'linear';
+    let completedLevels = [];
 
     // ── Format help ───────────────────────────────────────────────────────────
     const formatHelp = {
@@ -713,6 +824,30 @@
         fh.classList.add('show');
     });
     document.getElementById('recipe-format').dispatchEvent(new Event('change'));
+
+    // ── Ctrl+Enter submits recipe ─────────────────────────────────────────────
+    document.getElementById('recipe-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            document.getElementById('submit-recipe').click();
+        }
+    });
+
+    // ── Auto-detect format on paste ───────────────────────────────────────────
+    document.getElementById('recipe-input').addEventListener('paste', () => {
+        setTimeout(() => {
+            const val = document.getElementById('recipe-input').value.trim();
+            const fmt = document.getElementById('recipe-format');
+            if (/^https?:\/\//i.test(val)) {
+                fmt.value = 'deeplink';
+            } else if (/^\[/.test(val)) {
+                fmt.value = 'json';
+            } else if (/^\w[\w\s]*\(/.test(val)) {
+                fmt.value = 'chef';
+            }
+            fmt.dispatchEvent(new Event('change'));
+        }, 0);
+    });
 
     // ── Toast ─────────────────────────────────────────────────────────────────
     function showToast(msg, type = 'success') {
@@ -820,7 +955,7 @@
     // ── Select challenge (jeopardy) ───────────────────────────────────────────
     function selectChallenge(id) {
         document.querySelectorAll('.ch-item').forEach(item => {
-            item.classList.toggle('active', parseInt(item.dataset.id) === id);
+            item.classList.toggle('active', parseInt(item.dataset.id, 10) === id);
         });
 
         document.getElementById('jeopardy-placeholder').style.display = 'none';
@@ -829,6 +964,7 @@
         document.getElementById('result').style.display                = 'none';
         document.getElementById('recipe-input').value                  = '';
 
+        closeMobileSidebar();
         loadChallenge(id);
     }
 
@@ -875,7 +1011,29 @@
 
             document.getElementById('challenge-name').textContent        = challenge.name;
             document.getElementById('challenge-description').textContent = challenge.description;
-            document.getElementById('challenge-hint').textContent        = challenge.hint;
+
+            // Show hint box only when a hint exists
+            const hintBox = document.querySelector('.hint-box');
+            if (challenge.hint) {
+                document.getElementById('challenge-hint').textContent = challenge.hint;
+                hintBox.style.display = '';
+            } else {
+                hintBox.style.display = 'none';
+            }
+
+            // Solved stamp — show if already completed
+            const existingStamp = document.querySelector('.solved-stamp');
+            if (existingStamp) existingStamp.remove();
+            if (completedLevels.includes(level)) {
+                const stamp = document.createElement('span');
+                stamp.className   = 'solved-stamp';
+                stamp.textContent = '✓ Solved';
+                document.querySelector('.ch-meta').appendChild(stamp);
+            }
+
+            // Back-to-board button visible in jeopardy mode
+            document.getElementById('back-to-board-btn').style.display =
+                appMode === 'jeopardy' ? '' : 'none';
 
             const dc = document.getElementById('downloads-container');
             dc.innerHTML = '';
@@ -895,8 +1053,6 @@
 
             currentLevel     = level;
             ci.style.opacity = '1';
-
-            showToast(`Loaded: ${challenge.name}`);
         } catch (err) {
             console.error('loadChallenge:', err);
             const ci = document.getElementById('challenge-info');
@@ -914,12 +1070,15 @@
             if (!resp.ok) return;
             const progress = await resp.json();
 
+            completedLevels = progress.completedLevels || [];
             const total     = progress.totalChallenges || 0;
-            const completed = progress.completedLevels.length;
-            const pct       = total > 0 ? (completed / total * 100) : 0;
+            const completed = completedLevels.length;
+            const pct       = total > 0 ? Math.round(completed / total * 100) : 0;
 
             document.getElementById('top-bar-label').textContent     = `${completed}/${total}`;
-            document.getElementById('top-bar-fill').style.width      = pct + '%';
+            const fill = document.getElementById('top-bar-fill');
+            fill.style.width = pct + '%';
+            fill.setAttribute('aria-valuenow', pct);
             document.getElementById('linear-prog-label').textContent = `Progress: ${completed} / ${total} challenges`;
             document.getElementById('linear-prog-fill').style.width  = pct + '%';
         } catch (err) {
@@ -961,9 +1120,22 @@
 
                 const h2 = document.createElement('h2');
                 h2.innerHTML = '&#9989; Challenge Solved!';
+
                 const flagBox = document.createElement('div');
-                flagBox.className   = 'flag-box';
-                flagBox.textContent = result.flag;
+                flagBox.className = 'flag-box';
+                const flagText = document.createElement('span');
+                flagText.textContent = result.flag;
+                const copyBtn = document.createElement('button');
+                copyBtn.className   = 'flag-copy-btn';
+                copyBtn.textContent = 'Copy';
+                copyBtn.addEventListener('click', () => {
+                    navigator.clipboard.writeText(result.flag).then(() => {
+                        copyBtn.textContent = 'Copied!';
+                        setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+                    }).catch(() => showToast('Copy failed', 'error'));
+                });
+                flagBox.append(flagText, copyBtn);
+
                 const actions = document.createElement('div');
                 if (appMode === 'jeopardy') {
                     actions.innerHTML = `<div class="result-actions">
@@ -977,6 +1149,7 @@
                     actions.innerHTML = `<p style="margin-top:12px;font-size:1em;">All challenges complete! Well done.</p>`;
                 }
                 rd.replaceChildren(h2, flagBox, actions);
+                rd.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
                 updateProgress();
                 if (appMode === 'jeopardy') loadJeopardyPanel();
@@ -1002,6 +1175,7 @@
                     p.append(strong, document.createTextNode(result.error));
                     rd.appendChild(p);
                 }
+                rd.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 showToast('Incorrect solution', 'error');
             }
 
@@ -1019,6 +1193,19 @@
             showToast('Validation error', 'error');
         }
     });
+
+    // ── Mobile sidebar toggle ─────────────────────────────────────────────────
+    function closeMobileSidebar() {
+        document.getElementById('jeopardy-sidebar').classList.remove('mobile-open');
+        document.getElementById('sidebar-backdrop').classList.remove('show');
+    }
+
+    document.getElementById('sidebar-toggle').addEventListener('click', () => {
+        document.getElementById('jeopardy-sidebar').classList.toggle('mobile-open');
+        document.getElementById('sidebar-backdrop').classList.toggle('show');
+    });
+
+    document.getElementById('sidebar-backdrop').addEventListener('click', closeMobileSidebar);
 
     // ── Boot ──────────────────────────────────────────────────────────────────
     window.addEventListener('load', initSession);
