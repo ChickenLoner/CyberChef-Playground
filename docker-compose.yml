@@ -18,8 +18,8 @@ services:
       - CHALLENGES_DIR=/app/challenges
 
     volumes:
-      # Mount local CCPG-Challenges repo directly — no rebuild needed when challenge files change.
-      - G:/CCPG-Challenges/challenges:/app/challenges:ro
+      # Mount synced challenges — run `npm run sync` first, or set CHALLENGES_PATH to an absolute path.
+      - ${CHALLENGES_PATH:-./.ccpg-challenges/challenges}:/app/challenges:ro
     
     # Resource limits (adjust based on your needs)
     deploy:
