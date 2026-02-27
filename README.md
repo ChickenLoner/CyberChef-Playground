@@ -1,20 +1,25 @@
-# 🔐 CyberChef Playground
+# CyberChef Playground
 
 A CTF-style challenge platform for learning cryptography and reverse engineering using CyberChef recipes. Perfect for blue team training, defensive security education, and security awareness programs.
 
-## ✨ Features
+## Features
 
-- 🎯 **Progressive Challenges** — unlock the next challenge by solving the current one
-- 🔗 **4 Recipe Formats** — Deep Link, Clean JSON, Compact JSON, Chef Format
-- 🏆 **Flag System** — earn flags for each solved challenge
-- 🧩 **Separated Challenge Repo** — challenges live in [CCPG-Challenges](https://github.com/ChickenLoner/CCPG-Challenges), keeping this repo safe from binary/malware scanning
-- 🔄 **KAPE-style Sync** — `npm run sync` pulls the latest challenges from CCPG-Challenges
-- 🚀 **No Browser Needed** — pure Node.js with cyberchef-node (300+ operations)
-- 🐳 **Docker Ready** — challenges cloned at build time, no manual steps
+- **Two Game Modes** — `linear` (sequential unlock) and `jeopardy` (all challenges open at once with a category board)
+- **Progressive Challenges** — in linear mode, solve the current challenge to unlock the next one
+- **4 Recipe Formats** — Deep Link, Clean JSON, Compact JSON, Chef Format
+- **Format Auto-detect** — paste any format and the dropdown switches automatically
+- **Keyboard Shortcut** — Ctrl+Enter (or Cmd+Enter on Mac) submits your recipe instantly
+- **Flag System** — earn flags for each solved challenge; copy them to clipboard with one click
+- **Solved Stamps** — completed challenges are visually marked on the board
+- **Mobile-friendly** — responsive layout with a collapsible sidebar on small screens
+- **Separated Challenge Repo** — challenges live in [CCPG-Challenges](https://github.com/ChickenLoner/CCPG-Challenges), keeping this repo safe from binary/malware scanning
+- **KAPE-style Sync** — `npm run sync` pulls the latest challenges from CCPG-Challenges
+- **No Browser Needed** — pure Node.js with cyberchef-node (300+ operations)
+- **Docker Ready** — challenges cloned at build time, no manual steps
 
 ---
 
-## 🏗️ Two-Repo Architecture
+## Two-Repo Architecture
 
 Inspired by [KAPE's KapeFiles](https://github.com/EricZimmerman/KapeFiles) model:
 
@@ -27,9 +32,9 @@ Challenges are never committed here. This protects the main repo from GitHub fla
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
-### Option 1: Docker (Recommended 🐳)
+### Option 1: Docker (Recommended)
 
 Challenges are automatically cloned from CCPG-Challenges during the image build. No manual steps needed.
 
@@ -56,9 +61,14 @@ docker-compose down
 docker-compose restart
 ```
 
+**Custom challenges path** (if your challenges are in a different location):
+```bash
+CHALLENGES_PATH=/absolute/path/to/your/challenges docker-compose up -d
+```
+
 **Troubleshooting:**
-- ❌ `port already in use` → Something else is using port 3000. Stop it first or change the port in `docker-compose.yml`.
-- ❌ `cannot find the file specified` → Docker Desktop isn't running.
+- `port already in use` — Something else is using port 3000. Stop it first or change the port in `docker-compose.yml`.
+- `cannot find the file specified` — Docker Desktop isn't running.
 
 ---
 
@@ -82,23 +92,48 @@ npm run dev        # development (auto-restart on file changes)
 
 ---
 
-## 📁 Project Structure
+## Game Modes
+
+CyberChef Playground supports two modes, controlled by `ccpg.config.json` in the project root.
+
+### Linear Mode (default)
+
+Challenges are unlocked one at a time. Players must solve challenge `N` before they can attempt challenge `N+1`.
+
+```json
+{ "mode": "linear" }
+```
+
+### Jeopardy Mode
+
+All challenges are visible at once on a category board, like a standard CTF. Players can attempt any challenge in any order.
+
+```json
+{ "mode": "jeopardy" }
+```
+
+The `category` field in each `challenge.json` is used to group challenges on the jeopardy board. If omitted, the challenge falls under `General`.
+
+> If no `ccpg.config.json` exists, the server defaults to `linear` mode.
+
+---
+
+## Project Structure
 
 ```
 CyberChef-Playground/          ← This repo
 ├── server.js                  ← Express API server
 ├── sync.js                    ← Challenge sync script
+├── ccpg.config.json           ← Mode config (linear / jeopardy)
 ├── public/
-│   └── index.html             ← Frontend UI
+│   └── index.html             ← Frontend UI (single file)
 ├── .ccpg-challenges/          ← Gitignored — created by npm run sync
 │   └── challenges/
 │       ├── xor-warmup/
 │       ├── base64-layering/
 │       └── ...
 ├── Dockerfile
-├── docker-compose.yml
-└── .claude/
-    └── launch.json            ← Dev server configs for Claude Code
+└── docker-compose.yml
 
 CCPG-Challenges/               ← Separate repo
 └── challenges/
@@ -113,7 +148,7 @@ CCPG-Challenges/               ← Separate repo
 
 ---
 
-## 🔄 Challenge Sync
+## Challenge Sync
 
 ```bash
 npm run sync
@@ -126,7 +161,7 @@ npm run sync
 
 ---
 
-## 🎓 How to Play
+## How to Play
 
 1. Open http://localhost:3000
 2. Download the challenge files
@@ -134,17 +169,24 @@ npm run sync
 4. Build a decryption recipe in [CyberChef](https://gchq.github.io/CyberChef/)
 5. Submit your recipe and earn the flag!
 
+**Keyboard shortcut:** Press **Ctrl+Enter** (or **Cmd+Enter** on Mac) in the recipe box to submit instantly.
+
+**Format auto-detect:** Paste your recipe and the format selector switches automatically:
+- Paste a full `https://gchq.github.io/CyberChef/#recipe=...` URL → Deep Link
+- Paste `[{"op": ...}]` → JSON
+- Paste `XOR(...)` style → Chef Format
+
 ---
 
-## 🔗 Supported Recipe Formats
+## Supported Recipe Formats
 
-### 1. 🔗 Deep Link *(Recommended)*
+### 1. Deep Link *(Recommended)*
 Just copy the URL from your browser while working in CyberChef:
 ```
 https://gchq.github.io/CyberChef/#recipe=XOR(%7B'option':'Hex','string':'42'%7D,'Standard',false)&input=...
 ```
 
-### 2. 📄 Clean JSON
+### 2. Clean JSON
 CyberChef → Save recipe → Clean JSON:
 ```json
 [
@@ -155,13 +197,13 @@ CyberChef → Save recipe → Clean JSON:
 ]
 ```
 
-### 3. 📦 Compact JSON
+### 3. Compact JSON
 CyberChef → Save recipe → Compact JSON:
 ```json
 [{"op":"XOR","args":[{"option":"Hex","string":"42"},"Standard",false]}]
 ```
 
-### 4. 🔧 Chef Format
+### 4. Chef Format
 CyberChef → Save recipe → Chef format:
 ```
 XOR({'option':'Hex','string':'42'},'Standard',false)
@@ -169,7 +211,7 @@ XOR({'option':'Hex','string':'42'},'Standard',false)
 
 ---
 
-## 🎓 How Validation Works
+## How Validation Works
 
 ```
 Player submits recipe (any of 4 formats)
@@ -183,20 +225,23 @@ Runs solution recipe on the same validation file
   → Expected bytes
          ↓
 SHA256(player bytes) == SHA256(expected bytes)?
-  ✓ Yes → Award flag, unlock next challenge
-  ✗ No  → Show hint
+  Yes → Award flag, unlock next challenge (linear) or mark solved (jeopardy)
+  No  → Show hint
 ```
 
 Validation uses **raw bytes** — works perfectly for binary files, shellcode, PE/ELF, PCAP payloads, and text alike.
 
 ---
 
-## 💡 Tips for Players
+## Tips for Players
 
-- 🔗 **Use Deep Link** — fastest workflow, just copy the browser URL
-- 🧪 **Test in CyberChef first** before submitting
-- 📝 **Read hints carefully** — they point to the right operations
-- 🔍 **Try CyberChef's Magic** operation when you're stuck on encoding detection
+- **Use Deep Link** — fastest workflow, just copy the browser URL
+- **Ctrl+Enter** — submit without reaching for the mouse
+- **Paste to auto-detect** — paste any format and let the UI pick the right one
+- **Test in CyberChef first** before submitting
+- **Read hints carefully** — they point to the right operations
+- **Try CyberChef's Magic** operation when you're stuck on encoding detection
+- **Copy your flag** — click the copy button next to the flag text
 
 **Common errors:**
 | Error | Fix |
@@ -207,47 +252,49 @@ Validation uses **raw bytes** — works perfectly for binary files, shellcode, P
 
 ---
 
-## 🎨 Adding New Challenges
+## Adding New Challenges
 
 Challenges live in [CCPG-Challenges](https://github.com/ChickenLoner/CCPG-Challenges). See [CTF_AUTHOR_GUIDE.md](CTF_AUTHOR_GUIDE.md) for the full walkthrough.
 
 **Quick summary:**
 1. Create a folder in `CCPG-Challenges/challenges/<your-slug>/`
-2. Add `challenge.json` (metadata + `id`) and `solution.json` (CyberChef recipe)
+2. Add `challenge.json` (metadata + `id` + `category`) and `solution.json` (CyberChef recipe)
 3. Add challenge files (ZIP for players) and a separate `validation.bin` (server-only)
 4. Push to CCPG-Challenges — players sync with `npm run sync`
 
 ---
 
-## 🔧 Technical Details
+## Technical Details
 
-- **Backend:** Express.js, Node.js 18+
+- **Backend:** Express.js 4.18, Node.js 18+ (ES modules)
 - **CyberChef API:** cyberchef-node v2.0.3 (all 300+ operations, no browser needed)
+- **Session management:** in-memory `Map` with 2-hour TTL; idle sessions evicted every 30 minutes
 - **Challenge discovery:** server scans all subdirs of `CHALLENGES_DIR`, loads `challenge.json`, sorts by `id`
-- **Security:** session-based progress, path sanitisation, validated folder names on download
+- **Validation:** SHA256 comparison of raw byte output; solution recipe never sent to clients
+- **Security:** DOM-safe rendering (no `innerHTML` with user data), path traversal prevention via `path.basename()`, validated folder names on download requests
 
 ---
 
-## 📚 References
-- [CyberChef Documentation](https://github.com/gchq/CyberChef/wiki) - Learn CyberChef operations
-- [cyberchef-node](https://github.com/gchq/CyberChef-server) - Node.js API docs
+## References
 
-## 🤝 Contributing
+- [CyberChef Documentation](https://github.com/gchq/CyberChef/wiki) — Learn CyberChef operations
+- [cyberchef-node](https://github.com/gchq/CyberChef-server) — Node.js API docs
+- [CCPG-Challenges](https://github.com/ChickenLoner/CCPG-Challenges) — Challenge content repo
+
+## Contributing
 
 - **New challenges** → contribute to [CCPG-Challenges](https://github.com/ChickenLoner/CCPG-Challenges)
 - **App improvements** → open a PR here
 
 ---
 
-## 📝 License
+## License
 
 Built for educational and training purposes. CyberChef is developed by GCHQ.
 
 ---
 
-**Ready to play?** 
-- 🐳 Docker: `docker-compose up -d`
-- 📦 npm: `npm start`
-- 🌐 Access: http://localhost:3000
-
-**Need help?** Check the guides above or open an issue! 🆘
+**Ready to play?**
+- Docker: `docker-compose up -d`
+- npm: `npm start`
+- Access: http://localhost:3000
