@@ -26,6 +26,20 @@ const MODE = appConfig.mode === 'jeopardy' ? 'jeopardy' : 'linear';
 const CHALLENGES_DIR = process.env.CHALLENGES_DIR
   || path.join(__dirname, '.ccpg-challenges', 'challenges');
 
+// ---------------------------------------------------------------------------
+// Build a normalised op-name lookup so recipes using CyberChef display names
+// (e.g. "Find / Replace", "AES Decrypt") resolve to cyberchef-node's exported
+// function keys (e.g. "findReplace", "AESDecrypt").
+// Strategy: strip all non-alphanumeric chars and compare lowercase.
+// ---------------------------------------------------------------------------
+const _opKeys = Object.keys(chef).filter(k => !['Dish', 'bake', 'bakeWithOptions'].includes(k));
+const _opLookup = Object.fromEntries(_opKeys.map(k => [k.replace(/[^a-zA-Z0-9]/g, '').toLowerCase(), k]));
+
+function resolveOpName(displayName) {
+  const normalised = displayName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  return _opLookup[normalised] || displayName; // fall back to original if not found
+}
+
 const app = express();
 
 app.use(express.json({ limit: '10mb' }));
@@ -161,8 +175,9 @@ function parseChefFormat(chefString) {
 
 async function executeCyberChefRecipe(inputData, recipe) {
   try {
+    const normalisedRecipe = recipe.map(step => ({ ...step, op: resolveOpName(step.op) }));
     const dish   = new chef.Dish(inputData, chef.Dish.ARRAY_BUFFER);
-    const result = await chef.bake(dish, recipe);
+    const result = await chef.bake(dish, normalisedRecipe);
     const output = await result.get(chef.Dish.ARRAY_BUFFER);
     return Buffer.from(output);
   } catch (error) {
