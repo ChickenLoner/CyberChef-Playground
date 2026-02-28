@@ -10,17 +10,13 @@ services:
     restart: unless-stopped
     
     ports:
-      - "3000:3000"
+      - "8080:3000"
     
     environment:
       - NODE_ENV=production
       - PORT=3000
       - CHALLENGES_DIR=/app/challenges
 
-    volumes:
-      # Mount synced challenges — run `npm run sync` first, or set CHALLENGES_PATH to an absolute path.
-      - ${CHALLENGES_PATH:-./.ccpg-challenges/challenges}:/app/challenges:ro
-    
     # Resource limits (adjust based on your needs)
     deploy:
       resources:
