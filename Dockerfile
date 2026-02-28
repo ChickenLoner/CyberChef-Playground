@@ -4,27 +4,24 @@
 # Stage 1: Build — install Node deps
 FROM node:20-alpine AS base
 
-# Install build dependencies (includes git for cloning challenges)
-RUN apk add --no-cache \
-    python3 \
-    make \
-    g++ \
-    git
-
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production && \
+# Install production deps and strip unnecessary files to keep node_modules lean
+RUN npm ci --omit=dev && \
+    find node_modules -name "*.md" -delete && \
+    find node_modules -name "*.map" -delete && \
+    find node_modules -type d \( -name "test" -o -name "tests" -o -name "docs" -o -name ".github" \) \
+        -exec rm -rf {} + 2>/dev/null || true && \
     npm cache clean --force
 
-# Stage 2: Sync — clone challenges from CCPG-Challenges repo
+# Stage 2: Sync — shallow clone challenges from CCPG-Challenges repo
 FROM alpine/git AS challenges
 
 WORKDIR /ccpg-challenges
-RUN git clone https://github.com/ChickenLoner/CCPG-Challenges.git .
+RUN git clone --depth=1 --single-branch https://github.com/ChickenLoner/CCPG-Challenges.git .
 
 # Stage 3: Production image
 FROM node:20-alpine
@@ -40,8 +37,8 @@ RUN addgroup -g 1001 -S nodejs && \
 
 WORKDIR /app
 
-# Copy dependencies from build stage
-COPY --from=base /app/node_modules ./node_modules
+# Copy dependencies with correct ownership at copy time (avoids a chown layer duplicating all files)
+COPY --from=base --chown=nodejs:nodejs /app/node_modules ./node_modules
 
 # Copy application files
 COPY --chown=nodejs:nodejs server.js ./
@@ -51,10 +48,6 @@ COPY --chown=nodejs:nodejs public ./public
 
 # Copy only the challenges/ subfolder from the cloned CCPG-Challenges repo
 COPY --from=challenges --chown=nodejs:nodejs /ccpg-challenges/challenges ./challenges
-
-# Create necessary directories with correct permissions
-RUN mkdir -p /app/challenges /app/public && \
-    chown -R nodejs:nodejs /app
 
 # Tell server.js where challenges live inside the container
 ENV CHALLENGES_DIR=/app/challenges
