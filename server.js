@@ -133,6 +133,39 @@ function parseDeepLink(url) {
   }
 }
 
+// Converts Chef-format args string (single-quoted, bare keys) to JSON-compatible string.
+// Handles embedded double-quotes inside single-quoted strings and avoids double-quoting
+// keys that are already quoted after the single→double quote conversion.
+function chefArgsToJson(s) {
+  let out = '';
+  let i = 0;
+  while (i < s.length) {
+    if (s[i] === "'") {
+      // Single-quoted string → convert to double-quoted, escaping any embedded "
+      out += '"';
+      i++;
+      while (i < s.length && s[i] !== "'") {
+        if (s[i] === '\\' && i + 1 < s.length) {
+          // Pass through escape sequence as-is
+          out += s[i] + s[i + 1];
+          i += 2;
+        } else if (s[i] === '"') {
+          out += '\\"';
+          i++;
+        } else {
+          out += s[i++];
+        }
+      }
+      out += '"';
+      i++; // consume closing '
+    } else {
+      out += s[i++];
+    }
+  }
+  // Quote bare identifier keys (e.g. option: → "option":) but not already-quoted keys
+  return out.replace(/(?<!["\w])(\w+)\s*:/g, '"$1":');
+}
+
 function parseChefFormat(chefString) {
   const operations = [];
   let i = 0;
@@ -181,9 +214,7 @@ function parseChefFormat(chefString) {
     // Parse args
     let args = [];
     if (argsString.trim()) {
-      const jsonArgs = argsString
-        .replace(/'/g, '"')
-        .replace(/(\w+):/g, '"$1":');
+      const jsonArgs = chefArgsToJson(argsString);
       try {
         args = JSON.parse(`[${jsonArgs}]`);
       } catch {
