@@ -161,7 +161,7 @@ npm run sync
 
 ## 🎓 How to Play
 
-1. 🌐 Open http://localhost:3000
+1. 🌐 Open http://localhost:8080 (Docker) or http://localhost:3000 (npm)
 2. 📥 Download the challenge files
 3. 🔍 Analyse the encryption in the binary/source
 4. 🍳 Build a decryption recipe in [CyberChef](https://gchq.github.io/CyberChef/)
