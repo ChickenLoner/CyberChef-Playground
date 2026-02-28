@@ -135,21 +135,53 @@ function parseDeepLink(url) {
 
 function parseChefFormat(chefString) {
   const operations = [];
-  const lines = chefString.trim().split('\n');
+  let i = 0;
+  const s = chefString.trim();
 
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
+  while (i < s.length) {
+    // Skip whitespace / newlines between operations
+    while (i < s.length && /\s/.test(s[i])) i++;
+    if (i >= s.length) break;
 
-    const match = trimmed.match(/^([\w_]+)\((.*)\)$/);
-    if (!match) throw new Error(`Invalid Chef format: ${trimmed}`);
+    // Read operation name — word chars + '/' for ops like "Find_/_Replace"
+    const nameStart = i;
+    while (i < s.length && /[\w/]/.test(s[i])) i++;
+    const rawName = s.slice(nameStart, i);
+    if (!rawName) throw new Error(`Unexpected token at position ${i}: '${s[i]}'`);
+    const opName = rawName.replace(/_/g, ' ');
 
-    let opName = match[1].replace(/_/g, ' ');
-    const argsString = match[2];
+    // Expect opening '('
+    if (i >= s.length || s[i] !== '(')
+      throw new Error(`Expected '(' after '${opName}', got '${s[i] ?? 'EOF'}'`);
+    i++; // consume '('
+
+    // Collect args up to the matching ')' — track depth and string delimiters
+    // so that '(' / ')' inside string literals don't affect depth.
+    let depth = 1;
+    let inStr  = null; // null | "'" | '"'
+    const argsStart = i;
+    while (i < s.length && depth > 0) {
+      const ch = s[i];
+      if (inStr) {
+        if (ch === '\\') { i++; }          // skip escaped char
+        else if (ch === inStr) inStr = null; // close string
+      } else if (ch === "'" || ch === '"') {
+        inStr = ch;
+      } else if (ch === '(') {
+        depth++;
+      } else if (ch === ')') {
+        depth--;
+        if (depth === 0) break;
+      }
+      i++;
+    }
+    const argsString = s.slice(argsStart, i);
+    i++; // consume closing ')'
+
+    // Parse args
     let args = [];
-
     if (argsString.trim()) {
-      let jsonArgs = argsString
+      const jsonArgs = argsString
         .replace(/'/g, '"')
         .replace(/(\w+):/g, '"$1":');
       try {
