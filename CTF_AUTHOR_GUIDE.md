@@ -252,8 +252,8 @@ npm start       # your new challenge should appear in the list
 **Docker:**
 ```bash
 # Rebuild the image to re-clone the latest challenges from GitHub
-docker compose build --no-cache && docker compose up -d
-docker compose logs   # confirm your challenge appears
+docker-compose build --no-cache && docker-compose up -d
+docker-compose logs   # confirm your challenge appears
 ```
 
 The server prints on startup:
@@ -333,7 +333,7 @@ Edit (or create) `ccpg.config.json` in the CyberChef-Playground root:
 - Re-run `npm run sync` and check server startup logs
 
 **❓ "Failed to load challenges" on startup?**
-- **Docker:** rebuild the image — `docker compose build --no-cache && docker compose up -d`
+- **Docker:** rebuild the image — `docker-compose build --no-cache && docker-compose up -d`
 - **npm:** run `npm run sync` first — challenges aren't bundled with the app
 - Check network access to GitHub
 

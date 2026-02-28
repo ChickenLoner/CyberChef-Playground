@@ -46,16 +46,16 @@ Challenges are automatically cloned from CCPG-Challenges during the image build.
 
 ```bash
 # Build and start (clones challenges automatically)
-docker compose up --build -d
+docker-compose up --build -d
 
 # Check status
-docker compose ps
+docker-compose ps
 
 # View logs
-docker compose logs -f
+docker-compose logs -f
 
 # Stop
-docker compose down
+docker-compose down
 ```
 
 **Access:** http://localhost:8080
@@ -292,4 +292,4 @@ Built for educational and training purposes. CyberChef is developed by GCHQ.
 
 ---
 
-> 🐳 **Docker:** `docker compose up -d` &nbsp;|&nbsp; 📦 **npm:** `npm start` &nbsp;|&nbsp; 🌐 **Access:** http://localhost:8080 (Docker) · http://localhost:3000 (npm)
+> 🐳 **Docker:** `docker-compose up -d` &nbsp;|&nbsp; 📦 **npm:** `npm start` &nbsp;|&nbsp; 🌐 **Access:** http://localhost:8080 (Docker) · http://localhost:3000 (npm)
