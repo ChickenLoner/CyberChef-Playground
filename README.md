@@ -45,6 +45,7 @@
 | **Mobile-friendly** | Responsive layout with collapsible sidebar |
 | **Separated Challenge Repo** | Challenges live in [CCPG-Challenges](https://github.com/ChickenLoner/CCPG-Challenges) — keeps this repo clean from binaries and malware samples |
 | **KAPE-style Sync** | `npm run sync` pulls latest challenges from CCPG-Challenges |
+| **Flow Control Support** | Fork, Merge, Subsection, Register, Label, Jump, Conditional Jump, Return — the full CyberChef recipe language |
 | **No Browser Needed** | Pure Node.js with cyberchef-node (300+ operations server-side) |
 | **Docker Ready** | Challenges cloned at build time; no manual setup required |
 
@@ -204,6 +205,10 @@ Player submits recipe (any of 4 formats)
          ↓
 Server parses it into CyberChef JSON
          ↓
+Flow control engine executes recipe op-by-op
+  ├── Regular ops  →  cyberchef-node (300+ operations)
+  └── Flow control →  custom engine (Fork, Merge, Jump, Register, Subsection…)
+         ↓
 Runs player's recipe on the hidden validation file  →  raw bytes
 Runs solution recipe on the same file              →  expected bytes
          ↓
@@ -221,6 +226,7 @@ Validation is **byte-exact** — works for binary files, shellcode, PE/ELF, PCAP
 ```
 CyberChef-Playground/          ← This repo
 ├── server.js                  ← Express API server
+├── flow-control.js            ← Flow control engine (Fork, Merge, Jump, Register…)
 ├── sync.js                    ← Challenge sync script
 ├── ccpg.config.json           ← Mode config (linear | jeopardy)
 ├── public/
@@ -263,6 +269,7 @@ Challenges live in [CCPG-Challenges](https://github.com/ChickenLoner/CCPG-Challe
 |-----------|--------|
 | **Backend** | Express.js 4.18, Node.js ≥18 (ES modules, top-level await) |
 | **CyberChef engine** | cyberchef-node v2.0.3 — 300+ operations, no browser required |
+| **Flow control engine** | Custom `flow-control.js` — Fork, Merge, Subsection, Register, Label, Jump, Conditional Jump, Return, Comment |
 | **Session management** | In-memory `Map` with 2-hour TTL; idle sessions evicted every 30 min |
 | **Challenge discovery** | Scans all subdirectories of `CHALLENGES_DIR`, loads `challenge.json`, sorts by `id` |
 | **Validation** | SHA256 of raw byte output — constant-time comparison |

@@ -42,6 +42,7 @@ COPY --from=base --chown=nodejs:nodejs /app/node_modules ./node_modules
 
 # Copy application files
 COPY --chown=nodejs:nodejs server.js ./
+COPY --chown=nodejs:nodejs flow-control.js ./
 COPY --chown=nodejs:nodejs sync.js ./
 COPY --chown=nodejs:nodejs ccpg.config.json ./
 COPY --chown=nodejs:nodejs public ./public

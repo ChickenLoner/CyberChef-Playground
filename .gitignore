@@ -4,6 +4,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+challenge/
+
 # Environment variables
 .env
 .env.local
@@ -23,9 +25,6 @@ Thumbs.db
 *.swo
 *~
 
-# Test files
-test/
-*.test.js
 
 # Build files
 dist/
