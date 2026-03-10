@@ -465,6 +465,8 @@ For creating or modifying challenges (see `CTF_AUTHOR_GUIDE.md` for full details
 
 Tests use Node.js built-in test runner (`node:test` + `node:assert`).
 
+> **Note (not yet implemented):** The `test/` directory and `*.test.js` files are currently excluded by `.gitignore`. Before creating and committing test files, remove those two exclusions from `.gitignore`. The `"test"` script is also missing from `package.json`. Both are tracked in `tasks.md` Phase 4.1.
+
 ```bash
 npm test                              # Run all tests
 node --test test/flow-control.test.js  # Flow control unit tests only

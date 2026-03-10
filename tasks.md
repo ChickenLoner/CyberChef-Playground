@@ -1,5 +1,20 @@
 # tasks.md — Flow Control Engine Implementation Plan
 
+## Current State
+
+**Nothing is implemented yet.** The following files need to be created or modified:
+
+| File | Status | Action needed |
+|---|---|---|
+| `flow-control.js` | ❌ Does not exist | Create from scratch |
+| `test/flow-control.test.js` | ❌ Does not exist | Create from scratch |
+| `test/integration.test.js` | ❌ Does not exist | Create from scratch |
+| `server.js` | ⚠ Exists, needs changes | Import + wire up flow-control.js |
+| `package.json` | ⚠ Exists, needs changes | Add `"test"` script |
+| `.gitignore` | ⚠ Exists, needs changes | Remove `test/` and `*.test.js` exclusions (currently blocks committing tests) |
+
+---
+
 ## Background
 
 `cyberchef-node` excludes all flow control operations (Fork, Merge, Register, Jump, Label, Conditional Jump, Subsection, Return, Comment). They throw `ExcludedOperationError`. This file tracks the work to build a custom flow control engine so the platform can execute any recipe players build in the CyberChef web UI.
