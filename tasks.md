@@ -83,10 +83,14 @@
 - [ ] If at limit: increment `ip` (fall through)
 
 ### 2.6 Conditional Jump
-- [ ] Extract args: `[label, maxIterations, regexStr]`
+- [ ] CyberChef arg order: `[matchRegex, invertCondition, labelName, maxIterations]`
+  - `args[0]` = regex string to test against current data
+  - `args[1]` = boolean; if `true`, jump when regex does NOT match (invert condition)
+  - `args[2]` = label name to jump to
+  - `args[3]` = max iterations
 - [ ] Convert current data to string
-- [ ] Test string against regex
-- [ ] If matches AND under iteration limit: jump (same as Jump)
+- [ ] Test string against regex; apply invert logic
+- [ ] If condition met AND under iteration limit: jump to label
 - [ ] Otherwise: fall through
 - [ ] Handle edge case: empty regex = always match
 
@@ -232,6 +236,52 @@
   - Only hex portions decoded, rest preserved
 - [ ] **Fork + Register combined**: Fork splits lines, Register captures from each line
 - [ ] **Conditional Jump loop**: process data until pattern no longer matches
+
+**Advanced challenge validation — Lukas's `advanced_challenges` branch:**
+
+These three challenges from [ChickenLoner/CCPG-Challenges@advanced_challenges](https://github.com/ChickenLoner/CCPG-Challenges/tree/advanced_challenges/challenges) require flow control and serve as end-to-end acceptance tests:
+
+- [ ] **DNS Exfil AES** (`challenges/dns-exfil-aes/`, id 13, category: Reversing)
+  - Flow control ops used: `Fork`, `Register`
+  - Recipe walkthrough:
+    1. `Fork("\\n", "")` — split DNS log lines, merge with no separator
+    2. `Regular expression` — extract long Base64url substrings from each DNS query
+    3. `From Base64 (URL-safe)` — decode each chunk
+    4. `To Hex` — convert to hex string
+    5. `Register("(.{32})")` — capture first 32 hex chars as `$R0` (the AES-CBC IV)
+    6. `Drop bytes(0, 32)` — remove the IV prefix, leaving ciphertext
+    7. `AES Decrypt(key="BootcampSecureKe", iv=$R0, mode=CBC, input=Hex, output=Raw)` — decrypt
+  - Key engine requirement: `$R0` substitution inside a nested object arg (`{"option":"Hex","string":"$R0"}`)
+  - Test: run `validation.bin` through this recipe, verify SHA256 matches expected hash
+
+- [ ] **Arithmetic Obfuscation** (`challenges/arithmetic-obfuscation/`, id 15, category: Deobfuscation)
+  - Flow control ops used: `Fork`, `Subsection` (×3), `Merge` (×3)
+  - Recipe walkthrough:
+    1. `Regular expression` — extract numeric expressions from `[char](value)` PowerShell cast syntax
+    2. `Fork("\\n", "\\n")` — process each extracted expression independently
+    3. `Subsection("[0-9]+\\+[0-9]+")` → `Find/Replace("+", " ")` → `Sum("Space")` → `Merge`
+    4. `Subsection("[0-9]+-[0-9]+")` → `Find/Replace("-", " ")` → `Subtract("Space")` → `Merge`
+    5. `Subsection("[0-9]+/[0-9]+")` → `Find/Replace("/", " ")` → `Divide("Space")` → `Merge`
+    6. `From Decimal("Line feed")` — convert decimal char codes to characters
+  - Key engine requirement: sequential Subsection/Merge blocks at same nesting level inside a Fork; `Merge` args `[true]` (boolean arg, not empty)
+  - Test: run `validation.bin` through this recipe, verify SHA256 matches expected hash
+
+- [ ] **Free Python Obfuscator** (`challenges/free-python-obfuscator/`, id 14, category: Deobfuscation)
+  - Flow control ops used: `Label`, `Conditional Jump`
+  - Recipe walkthrough:
+    1. `Label("Begin")` — loop entry point
+    2. `Regular expression` — extract Base64 string from `b'...'` Python bytes literal
+    3. `Reverse("Character")` — reverse the extracted string
+    4. `From Base64` — decode
+    5. `Zlib Inflate` — decompress
+    6. `Conditional Jump("exec", false, "Begin", 1000)` — if output still contains `exec`, loop back to "Begin" (up to 1000 times)
+  - Arg order for Conditional Jump: `[matchRegex, invertCondition, labelName, maxIterations]`
+    - `"exec"` = regex to test against current output
+    - `false` = do NOT invert (jump when it DOES match)
+    - `"Begin"` = label to jump to
+    - `1000` = max iterations
+  - Key engine requirement: Label/Conditional Jump loop that terminates when the deobfuscated payload no longer wraps output in `exec()`; engine must correctly parse the 4-arg Conditional Jump format
+  - Test: run `validation.bin` through this recipe, verify SHA256 matches expected hash
 
 **Error handling:**
 - [ ] Recipe with Fork but no Merge → descriptive error
