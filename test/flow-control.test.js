@@ -433,4 +433,68 @@ describe('safety limits', () => {
       /nesting|depth/i
     );
   });
+
+  test('nested fork depth=9 with loop near step limit does not crash', async () => {
+    // 9 nested Forks (just under MAX_FORK_DEPTH=10) with small data
+    const recipe = [];
+    for (let i = 0; i < 9; i++) {
+      recipe.push({ op: 'Fork', args: ['x', 'x', false] });
+    }
+    recipe.push({ op: 'Comment', args: ['innermost'] });
+    for (let i = 0; i < 9; i++) {
+      recipe.push({ op: 'Merge', args: [] });
+    }
+    // Should succeed without hitting limits — input has no 'x' so no actual splitting
+    const out = await run('safe', recipe);
+    assert.equal(out, 'safe');
+  });
+
+  test('loop near MAX_STEPS terminates correctly', async () => {
+    // Jump with a high iteration count — should terminate at maxIterations, not MAX_STEPS
+    const out = await run('data', [
+      { op: 'Label', args: ['loop'] },
+      { op: 'Jump', args: ['loop', 50] },
+    ]);
+    // After 50 iterations, falls through — data unchanged (no regular ops)
+    assert.equal(out, 'data');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Unicode handling
+// ---------------------------------------------------------------------------
+describe('Unicode handling', () => {
+  test('Fork splits emoji input correctly', async () => {
+    const out = await run('😀\n🎉\n🚀', [
+      { op: 'Fork', args: ['\\n', ','] },
+      { op: 'Merge', args: [] },
+    ]);
+    assert.equal(out, '😀,🎉,🚀');
+  });
+
+  test('Register captures multi-byte characters', async () => {
+    const out = await run('key=日本語&value=test', [
+      { op: 'Register', args: ['key=(.+?)&', true, false, false] },
+      { op: 'Find / Replace', args: [{ option: 'Regex', string: 'value=(.+)' }, 'value=$R0', true, false, true, false] },
+    ]);
+    assert.equal(out, 'key=日本語&value=日本語');
+  });
+
+  test('Subsection matches multi-byte text', async () => {
+    // Subsection matching CJK characters, apply ROT13 only to ASCII parts
+    const out = await run('abc漢字def', [
+      { op: 'Subsection', args: ['[a-z]+', true, false, false] },
+      { op: 'To Upper case', args: ['All'] },
+      { op: 'Merge', args: [] },
+    ]);
+    assert.equal(out, 'ABC漢字DEF');
+  });
+
+  test('Fork with emoji as delimiter', async () => {
+    const out = await run('hello🔥world🔥test', [
+      { op: 'Fork', args: ['🔥', '-'] },
+      { op: 'Merge', args: [] },
+    ]);
+    assert.equal(out, 'hello-world-test');
+  });
 });

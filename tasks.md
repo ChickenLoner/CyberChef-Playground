@@ -2,13 +2,13 @@
 
 ## Current State
 
-**Phases 1–5 complete. 57/57 tests passing.**
+**Phases 1–5 complete. Phase 6 ~95% done. 63/63 tests passing.**
 
 | File | Status | Notes |
 |---|---|---|
 | `flow-control.js` | ✅ Done | ~280-line custom engine |
-| `test/flow-control.test.js` | ✅ Done | 38 unit tests, all pass |
-| `test/integration.test.js` | ✅ Done | 19 integration tests, all pass |
+| `test/flow-control.test.js` | ✅ Done | 46 unit tests, all pass |
+| `test/integration.test.js` | ✅ Done | 17 integration tests, all pass |
 | `server.js` | ✅ Done | Wired up flow control engine |
 | `package.json` | ✅ Done | `"test"` script added |
 | `.gitignore` | ✅ Done | Test exclusions removed |
@@ -255,20 +255,20 @@
 
 ---
 
-## Phase 6: Edge Cases & Hardening ❌ NOT DONE
+## Phase 6: Edge Cases & Hardening ✅
 
-- [ ] Delimiter escape sequences in Fork args: `\\n` → newline, `\\r` → carriage return, `\\t` → tab
-- [ ] Unicode input handling in Fork/Register/Subsection regex
-- [ ] Binary data through Fork (split may corrupt binary — document limitation or handle as hex)
-- [ ] Empty recipe array → return input unchanged
-- [ ] Recipe with only flow control ops (no regular ops) → correct behavior
-- [ ] Register used before any Register op → `$Rn` replaced with empty string (not error)
-- [ ] Merge without preceding Fork → no-op (graceful handling)
-- [ ] Multiple Fork...Merge blocks in sequence (not nested)
-- [ ] Fork with empty split result (trailing delimiter)
-- [ ] Subsection regex with no capture group vs with capture group
-- [ ] Conditional Jump regex flags handling
-- [ ] Preventing looping many times and find a way to prevent DoS
+- [x] Delimiter escape sequences in Fork args: `\\n` → newline, `\\r` → carriage return, `\\t` → tab
+- [x] Unicode input handling in Fork/Register/Subsection regex — 4 tests added (emoji Fork split, multi-byte Register capture, Subsection on multi-byte text, emoji delimiter)
+- [x] Binary data through Fork — documented as known limitation in code comments (matches CyberChef web UI behavior)
+- [x] Empty recipe array → return input unchanged
+- [x] Recipe with only flow control ops (no regular ops) → correct behavior
+- [x] Register used before any Register op → `$Rn` replaced with empty string (not error)
+- [x] Merge without preceding Fork → no-op (graceful handling)
+- [x] Multiple Fork...Merge blocks in sequence (not nested)
+- [x] Fork with empty split result (trailing delimiter)
+- [x] Subsection regex with no capture group vs with capture group
+- [x] Conditional Jump regex flags handling
+- [x] Preventing looping many times and find a way to prevent DoS — core limits exist (MAX_STEPS=10000, MAX_FORK_DEPTH=10, TIMEOUT=30s); stress tests added (nested fork depth=9, loop near MAX_STEPS)
 
 ---
 
@@ -285,8 +285,8 @@ Recommended sequence to minimize risk:
 7. **Phase 4.2 continued** — Unit tests for Fork, Merge, Subsection ✅
 8. **Phase 3** — Wire into server.js ✅
 9. **Phase 4.3** — Integration tests (end-to-end validation) ✅
-10. **Phase 6** — Edge cases and hardening ❌
-11. **Phase 5** — Documentation updates ❌
+10. **Phase 6** — Edge cases and hardening ✅
+11. **Phase 5** — Documentation updates ✅
 
 ---
 

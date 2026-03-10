@@ -91,6 +91,8 @@ A CyberChef recipe in **Clean JSON** format. The server runs this against `valid
 
 > ⚠️ Always use **Clean JSON** — not Deep Link or Chef Format. This ensures consistent parsing on every platform.
 
+> ✅ **Flow control operations are fully supported.** Solutions can use Fork, Merge, Subsection, Register, Label, Jump, Conditional Jump, Return, and Comment — just like in the CyberChef web UI.
+
 **Single operation:**
 ```json
 [
@@ -111,6 +113,24 @@ A CyberChef recipe in **Clean JSON** format. The server runs this against `valid
   { "op": "From Base64", "args": ["A-Za-z0-9+/=", true, false] },
   { "op": "XOR",        "args": [{"option": "Hex", "string": "42"}, "Standard", false] },
   { "op": "ROT47",      "args": [47] }
+]
+```
+
+**Flow control example** (Fork each line, decode Base64, merge back):
+```json
+[
+  { "op": "Fork",        "args": ["\\n", "\\n"] },
+  { "op": "From Base64", "args": ["A-Za-z0-9+/=", true, false] },
+  { "op": "Merge",       "args": [] }
+]
+```
+
+**Register + dynamic key example** (capture key from first 8 bytes, use as XOR key):
+```json
+[
+  { "op": "Register",    "args": ["(.{8})", true, false, false] },
+  { "op": "Drop bytes",  "args": [0, 8, false] },
+  { "op": "XOR",         "args": [{"option": "UTF8", "string": "$R0"}, "Standard", false] }
 ]
 ```
 

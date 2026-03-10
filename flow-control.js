@@ -232,6 +232,7 @@ async function executeBlock(recipe, inputData, chefModule, opLookup, state) {
         if (dotAll) flags += 's';
 
         const regex = new RegExp(regexStr, flags);
+        // Note: converts to UTF-8 string; binary data will be corrupted (matches CyberChef web UI behavior)
         const str = data.toString('utf8');
         const match = regex.exec(str);
 
@@ -319,6 +320,7 @@ async function executeBlock(recipe, inputData, chefModule, opLookup, state) {
         const blockEnd = mergeIdx === -1 ? recipe.length : mergeIdx;
         const innerRecipe = recipe.slice(state.ip + 1, blockEnd);
 
+        // Note: converts to UTF-8 string; binary data will be corrupted (matches CyberChef web UI behavior)
         const str = data.toString('utf8');
         const pieces = splitDelim === '' ? [str] : str.split(splitDelim);
 
@@ -387,6 +389,7 @@ async function executeBlock(recipe, inputData, chefModule, opLookup, state) {
         }
         const innerRecipe = recipe.slice(state.ip + 1, mergeIdx);
 
+        // Note: converts to UTF-8 string; binary data will be corrupted (matches CyberChef web UI behavior)
         const str = data.toString('utf8');
         let regex;
         try {
