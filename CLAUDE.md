@@ -512,3 +512,8 @@ Edit `ccpg.config.json` — set `"mode"` to `"linear"` or `"jeopardy"`. Restart 
 
 **Inspect loaded challenges at startup:**
 The server logs each loaded challenge ID and name to stdout on startup.
+
+## Plans
+
+- Make the plan extremely concise. Sacrifice grammar for the sake of consition
+- At the end of each plan, give me a list of unresolved questions to answer, if any 
