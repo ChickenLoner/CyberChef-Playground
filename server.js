@@ -4,6 +4,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import chef from 'cyberchef-node';
+import { executeRecipe, isFlowControlOp } from './flow-control.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,6 +37,7 @@ const _opKeys = Object.keys(chef).filter(k => !['Dish', 'bake', 'bakeWithOptions
 const _opLookup = Object.fromEntries(_opKeys.map(k => [k.replace(/[^a-zA-Z0-9]/g, '').toLowerCase(), k]));
 
 function resolveOpName(displayName) {
+  if (isFlowControlOp(displayName)) return displayName;
   const normalised = displayName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
   return _opLookup[normalised] || displayName; // fall back to original if not found
 }
@@ -238,11 +240,7 @@ function parseChefFormat(chefString) {
 
 async function executeCyberChefRecipe(inputData, recipe) {
   try {
-    const normalisedRecipe = recipe.map(step => ({ ...step, op: resolveOpName(step.op) }));
-    const dish   = new chef.Dish(inputData, chef.Dish.ARRAY_BUFFER);
-    const result = await chef.bake(dish, normalisedRecipe);
-    const output = await result.get(chef.Dish.ARRAY_BUFFER);
-    return Buffer.from(output);
+    return await executeRecipe(inputData, recipe, chef);
   } catch (error) {
     console.error('CyberChef execution error:', error.message);
     throw error;
@@ -444,6 +442,7 @@ console.log('CyberChef Playground - Node.js API Mode');
 console.log('='.repeat(60));
 console.log('\n✓ Using cyberchef-node v2.0.3 (Node.js compatible)');
 console.log('✓ ALL 300+ operations supported!');
+console.log('✓ Flow control operations supported (Fork, Merge, Jump, Register, etc.)');
 console.log('✓ Deep link support enabled!');
 console.log(`  Challenges dir: ${CHALLENGES_DIR}\n`);
 
